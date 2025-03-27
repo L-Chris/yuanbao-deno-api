@@ -14,7 +14,8 @@ export const getChatConfig = (body: {
   tool_choice?: OpenAI.ToolChoice
   messages: OpenAI.Message[]
 }): OpenAI.ChatConfig => {
-  const parts = (body.model || 'qwen-max-latest').split('_')
+  const parts = body.model!.split('_')
+  const model_name = parts.filter(_ => !['think', 'search'].includes(_)).join('_')
   const response_format: OpenAI.ChatConfig['response_format'] = body.response_format?.type ? body.response_format : { type: 'text' }
   const stream = typeof body.stream === 'boolean' ? body.stream : false
   const tools: OpenAI.Tool[] = body.tools || []
@@ -22,7 +23,7 @@ export const getChatConfig = (body: {
   const is_tool_calling_done = tools.length > 0 && body.messages.some(m => m.role === 'tool')
   const returnArtifacts = response_format.type === 'json_schema' || is_tool_calling
   return {  
-    model_name: parts[0],
+    model_name: model_name,
     features: {
       thinking: parts.includes('think'),
       searching: parts.includes('search'),

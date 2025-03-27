@@ -171,12 +171,28 @@ export async function getModels (params: { token: string }) {
       name: "deepseek",
     },
     {
-      id: 'deepseek_think',
-      name: "deepseek_think",
+      id: 'deep_seek_search',
+      name: "deepseek_search",
     },
     {
-      id: 'deepseek_think_search',
+      id: 'deep_seek_think_search',
       name: "deepseek_think_search",
+    },
+    {
+      id: 'hunyuan_gpt_175B_0404',
+      name: "hunyuan",
+    },
+    {
+      id: 'hunyuan_t1',
+      name: "hunyuan_t1",
+    },
+    {
+      id: 'hunyuan_t1_search',
+      name: "hunyuan_t1_search",
+    },
+    {
+      id: 'hunyuan_gpt_175B_0404_search',
+      name: "hunyuan_search",
     },
   ]
 }

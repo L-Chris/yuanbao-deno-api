@@ -64,6 +64,9 @@ export class ChunkTransformer {
         this.send({ citations: searchChunk.docs.map(doc => doc.url) })
         break
       }
+      case CHUNK_TYPE.START:
+        console.log(chunkData)
+        break
     }
   }
 
@@ -72,6 +75,7 @@ export class ChunkTransformer {
     if (chunk.type === 'think') return CHUNK_TYPE.THINKING
     if (chunk.type === 'text') return CHUNK_TYPE.TEXT
     if (chunk.type === 'searchGuid') return CHUNK_TYPE.SEARCHING_DONE
+    if (chunk.type === 'meta') return CHUNK_TYPE.START
     return CHUNK_TYPE.NONE
   }
 
