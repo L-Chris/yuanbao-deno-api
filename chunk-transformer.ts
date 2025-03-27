@@ -85,7 +85,7 @@ export class ChunkTransformer {
       case 'dividerLine': {
         const chunkData = chunk as YuanBao.CompletionChunkDivider
         this.send({
-          content: `# ${chunkData.dividerText}\n`
+          content: `\n# ${chunkData.dividerText}\n`
         })
         break;
       }
@@ -101,13 +101,15 @@ export class ChunkTransformer {
           }
         })
         this.send({
-          content: `# 相关组织及人物\n${tableMark}`
+          content: `\n# 相关组织及人物\n${tableMark}`
         })
         break
       }
-      case 'timeline':
-        console.log(chunk)
-        break;
+      default:
+        if (!['components', 'mindmap', 'meta', 'step'].includes(chunk.type)) {
+          console.log(chunk)
+        }
+        break
     }
   }
 
