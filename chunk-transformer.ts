@@ -224,6 +224,12 @@ export class ChunkTransformer {
     }
 
     if (params.done) {
+        if (this.citations.length > 0) {
+          message.citations = this.citations
+          this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
+          message.citations = []
+        }
+
         if (this.config.tools?.length > 0 && this.sentBlockIndex === -1) {
           message.choices[0].delta!.content = this.content
         }
@@ -234,7 +240,6 @@ export class ChunkTransformer {
             completion_tokens,
             total_tokens: prompt_tokens + completion_tokens   
         }
-        message.citations = this.citations
         message.choices[0].finish_reason = 'stop'
         this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
         // Deno.writeFileSync(`./data/${this.config.chat_id}_res_2.json`, new TextEncoder().encode(JSON.stringify(message)))
