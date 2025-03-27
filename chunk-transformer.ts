@@ -1,5 +1,5 @@
 import { createParser } from 'eventsource-parser'
-import { OpenAI, Qwen } from './types.ts'
+import { OpenAI, YuanBao } from './types.ts'
 import { approximateTokenSize } from 'tokenx'
 import { uuid } from "./utils.ts";
 import { parseAssistantMessage } from "./assistant-message/index.ts";
@@ -36,47 +36,42 @@ export class ChunkTransformer {
   private parse (e: EventSourceMessage) {
     if (!e.data) return
 
+    if (/^[[a-z]/.test(e.data)) return
+
     const chunkData: YuanBao.CompletionChunk = JSON.parse(e.data)
     const chunkType = this.getChunkType(chunkData)
-    const delta = chunkData.choices[0].delta
 
-    if (chunkType === CHUNK_TYPE.TEXT) {
-      if (!delta.content) return
-      if (this.config.features.thinking) {
-        if (!this.content && /^<think>/.test(delta.content)) {
-          this.isThinking = true
-        }
-        const thinkingCloseTagIndex = delta.content.indexOf('</think>')
-        if (this.isThinking && thinkingCloseTagIndex < 0) {
-          this.send({ reasoning_content: delta.content  })
-        } else if (this.isThinking && thinkingCloseTagIndex >= 0) {
-          this.send({
-            reasoning_content: delta.content.slice(0, thinkingCloseTagIndex + 8),
-            content: delta.content.slice(thinkingCloseTagIndex + 8)
-          })
-        } else {
-          this.send({ content: delta.content })
-        }
-        if (thinkingCloseTagIndex >= 0) {
-          this.isThinking = false
-        }
-      } else {
-        this.send({ content: delta.content })
+    switch (chunkType) {
+      case CHUNK_TYPE.TEXT: {
+        const textChunk = chunkData as YuanBao.CompletionChunkText
+        if (!textChunk.msg) return
+        this.content += textChunk.msg
+        this.send({ 
+          content: textChunk.msg
+        })
+        break
       }
-      return
-    }
-
-    if (chunkType === CHUNK_TYPE.SEARCHING_DONE) {
-      const citations = (delta.extra?.web_search_info || []).map(_ => _.url)
-      this.send({ citations })
+      case CHUNK_TYPE.THINKING: {
+        const thinkChunk = chunkData as YuanBao.CompletionChunkThink
+        this.content += thinkChunk.content
+        this.send({ 
+          reasoning_content: thinkChunk.content
+        })
+        break
+      }
+      case CHUNK_TYPE.SEARCHING_DONE: {
+        const searchChunk = chunkData as YuanBao.CompletionChunkSearch
+        this.send({ citations: searchChunk.docs.map(doc => doc.url) })
+        break
+      }
     }
   }
 
   // 根据对接模型修改
   private getChunkType (chunk: YuanBao.CompletionChunk) {
-    if (chunk.choices[0]?.delta?.name === 'web_search')
-      return CHUNK_TYPE.SEARCHING_DONE
-    if (chunk.choices[0]?.delta?.content) return CHUNK_TYPE.TEXT
+    if (chunk.type === 'think') return CHUNK_TYPE.THINKING
+    if (chunk.type === 'text') return CHUNK_TYPE.TEXT
+    if (chunk.type === 'searchGuid') return CHUNK_TYPE.SEARCHING_DONE
     return CHUNK_TYPE.NONE
   }
 

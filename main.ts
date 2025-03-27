@@ -3,8 +3,6 @@ import { getChatConfig, mergeMessages } from "./utils.ts";
 import { createCompletion, createCompletionStream, createConversation, getModels, removeConversation } from "./api.ts";
 import { OpenAI, YuanBao } from "./types.ts";
 
-// Deno.env.set('ssxmod_itna', 'GqmxgGD=e7T4hx+2DfxQqqiFm7wD7Dl4BtGRDeq7UQGcD8hD0Pgmj0YGkFD2nLAUxSKD/+DeGzDiuPGhDBWYHoKY34qCsAeObr4BQegF+esK8BTO3KbQmSGhpd5OCgu+Ye40aDbqGkF0wwiDYYvDBYD74G+DDeDixGmSqDS3xD9DGPKpjbd1eDEDYPKxA3Di4D+7niDmMxDGdEZD7jWzlqD0q=nbGhx67WWywcbI1bdi1dKx0UWDBd3C/qKsZgAViTWrzLi5RiDzMkDtuRb9jXOwgrtXQniYG=BqgUx4h++l7Gc/DwezvhNQDK7xCDYriKjnxfiIkQXK34DDc=/i7e4zbGa4xBKHgtHS4rZj4CKOC4xG+GPKDPYDxKi7lHt9xV7G/fGxj54CDtY03vvDD')
-
 const app = new Hono()
 
 app.get('/', (c) => c.text('Hello World'))
@@ -88,4 +86,4 @@ app.get('/v1/models', async (c) => {
   })
 })
 
-Deno.serve({ port: 8002 }, app.fetch)
+export default app

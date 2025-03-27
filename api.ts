@@ -15,14 +15,13 @@ export async function createConversation (params: {
     {
       method: 'POST',
       body: JSON.stringify({
-        agentId: 'naQivTmsDa'
+        agentId: Deno.env.get('agentid')
       }),
       headers: generateHeaders(params.token)
     }
   )
 
   const json = await result.json()
-
   return {
     id: json.id
   }
@@ -72,7 +71,7 @@ export async function createCompletionStream (
           }
         },
         multimedia: [],
-        agentId: 'naQivTmsDa',
+        agentId: Deno.env.get('agentid'),
         supportHint: 1,
         version: 'v2',
         chatModelId: params.config.model_name,
@@ -172,11 +171,11 @@ export async function getModels (params: { token: string }) {
       name: "deepseek",
     },
     {
-      id: 'deep_seek',
+      id: 'deepseek_think',
       name: "deepseek_think",
     },
     {
-      id: 'deep_seek',
+      id: 'deepseek_think_search',
       name: "deepseek_think_search",
     },
   ]
@@ -237,6 +236,7 @@ function formatMessageResponse (
 
 export function generateHeaders (token: string) {
   const Cookie = [
+    `hy_source=web`,
     `hy_user=${Deno.env.get('hy_user')}`,
     `hy_token=${token}`
   ].join('; ')
@@ -244,7 +244,7 @@ export function generateHeaders (token: string) {
   return {
     Cookie,
     'chat_version': 'v1',
-    'x-agentid': 'naQivTmsDa',
+    'x-agentid': Deno.env.get('agentid') || '',
     'content-type': 'application/json',
     Accept: 'application/json, text/plain, */*',
     'Accept-Encoding': 'gzip',

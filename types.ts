@@ -151,26 +151,79 @@ export declare namespace YuanBao {
     showType: 'image' | 'file'
   }
 
-  interface CompletionChunk {
-    choices: {
-      delta: {
-        role: 'function' | 'assistant'
-        content: string
-        name?: 'web_search'
-        extra?: {
-          web_search_info?: SearchResult[]
-        }
-      }
-    }[]
+  type CompletionChunkStep = {
+    type: 'step'
+    msg?: string;
+    scene?: string;
+    index?: number;
+    writeExtend?: {
+      fileName: string;
+      docEditable: boolean;
+      fileType: string;
+      outline: string;
+      templateId: string;
+    };
   }
 
-  interface SearchResult {
-    url: string
+  type CompletionChunkText = {
+    type: 'text'
+    msg: string
+  }
+
+  type CompletionChunkThink = {
+    type: 'think'
     title: string
-    snippet: string
-    hostname: string | null
-    hostlogo: string | null
-    date: string
+    iconType: string
+    content: string
+  }
+
+  type CompletionChunkSearch = {
+    type: 'searchGuid'
+    title: string
+    subTitle: string
+    footnote: string;
+    prompt: string;
+    botPrompt: string;
+    entranceIndex: number;
+    messageId: string;
+    docs: SearchResult[];
+    hitDeepMode: boolean;
+    hitHelpDraw: boolean;
+    hitDrawMore: boolean;
+    hitSearchAIImg: boolean;
+    topic: string;
+    count: number;
+    deepModeCid: string;
+    aiImageTotal: number;
+    realImageTotal: number;
+  }
+
+  type CompletionChunkMeta = {
+    type: "meta";
+    messageId: string;
+    index: number;
+    replyId: string;
+    replyIndex: number;
+    traceId: string;
+    guideId: number;
+    ic: number;
+    unSupportRepeat: boolean;
+    pluginID: string;
+  }
+
+  type CompletionChunk = CompletionChunkSearch | CompletionChunkStep | CompletionChunkText | CompletionChunkThink | CompletionChunkMeta
+
+  interface SearchResult {
+    index: number;
+    docId: string;
+    title: string;
+    url: string;
+    sourceType: string;
+    sourceName: string;
+    quote: string;
+    publish_time: string;
+    icon_url: string;
+    web_site_name: string;
   }
 
   interface Model {

@@ -7,7 +7,7 @@
         "tokenx": "npm:tokenx@^0.4.1"
     },
     "tasks": {
-        "start": "deno run --allow-net --allow-read --allow-sys --allow-write --allow-env main.ts"
+        "start": "deno serve --allow-net --allow-read --allow-sys --allow-write --allow-env main.ts"
     },
     "compilerOptions": {
         "jsx": "precompile",
