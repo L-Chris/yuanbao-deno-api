@@ -64,9 +64,6 @@ export class ChunkTransformer {
         this.send({ citations: searchChunk.docs.map(doc => doc.url) })
         break
       }
-      case CHUNK_TYPE.START:
-        console.log(chunkData)
-        break
     }
   }
 

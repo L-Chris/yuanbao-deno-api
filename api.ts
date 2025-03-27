@@ -28,9 +28,15 @@ export async function createConversation (params: {
 }
 
 export function removeConversation (convId: string, ticket: string) {
-  return fetch(`https://chat.qwen.ai/api/v1/chats/${convId}`, {
-    method: 'DELETE',
-    headers: generateHeaders(ticket)
+  return fetch(`https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear${convId}`, {
+    method: 'POST',
+    headers: generateHeaders(ticket),
+    body: JSON.stringify({
+      uiOptions: {
+        noToast: true
+      },
+      conversationIds: [convId]
+    })
   })
 }
 
