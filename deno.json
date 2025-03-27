@@ -1,0 +1,16 @@
+{
+    "imports": {
+        "eventsource-parser": "npm:eventsource-parser@^3.0.0",
+        "hono": "jsr:@hono/hono@^4.7.2",
+        "lodash": "npm:lodash@^4.17.21",
+        "mime": "npm:mime@^4.0.6",
+        "tokenx": "npm:tokenx@^0.4.1"
+    },
+    "tasks": {
+        "start": "deno run --allow-net --allow-read --allow-sys --allow-write --allow-env main.ts"
+    },
+    "compilerOptions": {
+        "jsx": "precompile",
+        "jsxImportSource": "hono/jsx"
+    }
+}
