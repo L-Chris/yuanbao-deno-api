@@ -81,7 +81,15 @@ export async function createCompletionStream (
         supportHint: 1,
         version: 'v2',
         chatModelId: params.config.model_name,
-        supportFunctions: [params.config.features.searching ? 'supportInternetSearch' : '']
+        supportFunctions: [params.config.features.searching ? 'supportInternetSearch' : ''],
+        ...(params.config.features.deepsearching ? {
+          isAiDeepSearch: true,
+          searchDeepMode: true,
+          searchDeepModeParentCid: params.config.chat_id,
+          searchDeepModeParentIndex: 2,
+          searchDeepModeParentRepeatIndex: 0,
+          speechMode: 5
+        } : {})
       })
     }
   )
@@ -183,6 +191,10 @@ export async function getModels (params: { token: string }) {
     {
       id: 'deep_seek_think_search',
       name: "deepseek_think_search",
+    },
+    {
+      id: 'hunyuan_gpt_175B_0404_deepsearch',
+      name: "hunyuan_deepsearch",
     },
     {
       id: 'hunyuan_gpt_175B_0404',

@@ -1,6 +1,7 @@
 import { createParser } from 'eventsource-parser'
 import { OpenAI, YuanBao } from './types.ts'
 import { approximateTokenSize } from 'tokenx'
+import json2md from 'json2md'
 import { uuid } from "./utils.ts";
 import { parseAssistantMessage } from "./assistant-message/index.ts";
 
@@ -13,6 +14,7 @@ export class ChunkTransformer {
   private config: OpenAI.ChatConfig
   private isThinking = false
   private messages: OpenAI.Message[] = []
+  private citations: string[] = []
   private sentBlockIndex = -1
   private parser = createParser({
     onEvent: e => {
@@ -59,11 +61,52 @@ export class ChunkTransformer {
         })
         break
       }
+      // 有可能触发多次，在结束前发送即可
       case CHUNK_TYPE.SEARCHING_DONE: {
         const searchChunk = chunkData as YuanBao.CompletionChunkSearch
-        this.send({ citations: searchChunk.docs.map(doc => doc.url) })
+        this.citations = searchChunk.docs.map(doc => doc.url)
         break
       }
+      default:
+        this.renderChunk(chunkData)
+        break
+    }
+  }
+
+  private renderChunk(chunk: YuanBao.CompletionChunk) {
+    switch (chunk.type) {
+      case 'outline': {
+        const chunkData = chunk as YuanBao.CompletionChunkOutline
+        this.send({
+          content: `# 研究大纲\n${chunkData.outlineList.map(_ => '- ' + _).join('\n')}`
+        })
+        break;
+      }
+      case 'dividerLine': {
+        const chunkData = chunk as YuanBao.CompletionChunkDivider
+        this.send({
+          content: `# ${chunkData.dividerText}`
+        })
+        break;
+      }
+      case 'relevantEntities': {
+        const chunkData = chunk as YuanBao.CompletionChunkRelevantEntities
+        const tableMark = json2md({
+          table: {
+            headers: ['name', 'desc'],
+            rows: chunkData.entityList.map(_ => ({
+              title: `${_.name} ${_.reference.map(r => '[' + r + ']').join('')}`,
+              desc: _.desc
+            }))
+          }
+        })
+        this.send({
+          content: `# 相关组织及人物\n${tableMark}`
+        })
+        break
+      }
+      default:
+        break;
     }
   }
 
@@ -107,7 +150,6 @@ export class ChunkTransformer {
   private send (params: {
     content?: string
     reasoning_content?: string
-    citations?: string[]
     error?: string
     done?: boolean
   }) {
@@ -125,7 +167,7 @@ export class ChunkTransformer {
         },
         finish_reason: null
       }],
-      citations: params.citations || [],
+      citations: [],
       created: Math.trunc(Date.now() / 1000)
     }
 
@@ -189,6 +231,7 @@ export class ChunkTransformer {
             completion_tokens,
             total_tokens: prompt_tokens + completion_tokens   
         }
+        message.citations = this.citations
         message.choices[0].finish_reason = 'stop'
         this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
         // Deno.writeFileSync(`./data/${this.config.chat_id}_res_2.json`, new TextEncoder().encode(JSON.stringify(message)))

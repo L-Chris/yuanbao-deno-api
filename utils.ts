@@ -26,11 +26,12 @@ export const getChatConfig = (body: {
     model_name: model_name,
     features: {
       thinking: parts.includes('think'),
-      searching: parts.includes('search'),
+      searching: parts.includes('search') || parts.includes('deepsearch'),
+      deepsearching: parts.includes('deepsearch')
     },
     response_format: response_format,
     chat_id: body.chat_id || '',
-    chat_type: parts.includes('search') ? 'search' : returnArtifacts ? 'artifacts' : 't2t',
+    chat_type: parts.includes('search') || parts.includes('deepsearch') ? 'search' : returnArtifacts ? 'artifacts' : 't2t',
     stream,
     tools: tools,
     tool_choice: body.tool_choice || 'auto',

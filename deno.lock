@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@hono/hono@^4.7.2": "4.7.2",
     "npm:eventsource-parser@3": "3.0.0",
+    "npm:json2md@^2.0.2": "2.0.2",
     "npm:lodash@^4.17.21": "4.17.21",
     "npm:mime@^4.0.6": "4.0.6",
     "npm:tokenx@~0.4.1": "0.4.1"
@@ -15,6 +16,15 @@
   "npm": {
     "eventsource-parser@3.0.0": {
       "integrity": "sha512-T1C0XCUimhxVQzW4zFipdx0SficT651NnkR0ZSH3yQwh+mFMdLfgjABVi4YtMTtaL4s168593DaoaRLMqryavA=="
+    },
+    "indento@1.1.14": {
+      "integrity": "sha512-K4cK97v4M/ucCAbe3LUpg994folYL0WnEiCFxHXAIowKLbBb/Ahiazkz3Ao5gRar4i9pDr3imcpq4suOu0FbNw=="
+    },
+    "json2md@2.0.2": {
+      "integrity": "sha512-bPXMyPSZRsN2Xh5tNWA4RjREnYmDK2GFO8eYOTbHSfVPfrFaqzIqFWN3gdf1bya65cm9Mf2PBSwvM7sWGEeuVA==",
+      "dependencies": [
+        "indento"
+      ]
     },
     "lodash@4.17.21": {
       "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="
@@ -125,6 +135,7 @@
     "dependencies": [
       "jsr:@hono/hono@^4.7.2",
       "npm:eventsource-parser@3",
+      "npm:json2md@^2.0.2",
       "npm:lodash@^4.17.21",
       "npm:mime@^4.0.6",
       "npm:tokenx@~0.4.1"

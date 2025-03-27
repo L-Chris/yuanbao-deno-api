@@ -95,6 +95,7 @@ export declare namespace OpenAI {
     features: {
       thinking: boolean
       searching: boolean
+      deepsearching: boolean
     }
     stream: boolean
     tools: Tool[]
@@ -168,6 +169,7 @@ export declare namespace YuanBao {
   type CompletionChunkText = {
     type: 'text'
     msg: string
+    isTitle?: boolean
   }
 
   type CompletionChunkThink = {
@@ -211,7 +213,51 @@ export declare namespace YuanBao {
     pluginID: string;
   }
 
-  type CompletionChunk = CompletionChunkSearch | CompletionChunkStep | CompletionChunkText | CompletionChunkThink | CompletionChunkMeta
+  type CompletionChunkComponent = {
+    type: 'components'
+    list: {
+      type: 'step' | 'searchGuid' | 'outline' | 'text' | 'mindmap' | 'timeline' | 'relevantEvents' | 'relevantEntities' | 'card';
+      steps?: { name: string }[];
+      title?: {
+        content?: string;
+        form?: string;
+      };
+    }[]
+  }
+
+  type CompletionChunkOutline = {
+    type: 'outline'
+    outlineList: string[]
+  }
+
+  type CompletionChunkMindmap = {
+    type: 'mindmap'
+    url: string
+    status: 'running' | 'success'
+    urlHigh: string
+  }
+
+  type CompletionChunkTimeline = {
+    type: 'timeline'
+    timelineList: any[]
+  }
+
+  type CompletionChunkRelevantEntities = {
+    type: 'relevantEntities'
+    entityList: {
+      name: string;
+      type: string;
+      desc: string;
+      reference: number[];
+    }[]
+  }
+
+  type CompletionChunkDivider = {
+    type: 'dividerLine'
+    dividerText: string
+  }
+
+  type CompletionChunk = CompletionChunkSearch | CompletionChunkStep | CompletionChunkText | CompletionChunkThink | CompletionChunkMeta | CompletionChunkComponent | CompletionChunkOutline | CompletionChunkMindmap | CompletionChunkTimeline | CompletionChunkRelevantEntities | CompletionChunkDivider
 
   interface SearchResult {
     index: number;
