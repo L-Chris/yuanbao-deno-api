@@ -65,6 +65,7 @@ export class ChunkTransformer {
       case CHUNK_TYPE.SEARCHING_DONE: {
         const searchChunk = chunkData as YuanBao.CompletionChunkSearch
         this.citations = searchChunk.docs.map(doc => doc.url)
+        this.send({ citations: this.citations })
         break
       }
       default:
@@ -152,6 +153,7 @@ export class ChunkTransformer {
 
   private send (params: {
     content?: string
+    citations?: string[]
     reasoning_content?: string
     error?: string
     done?: boolean
@@ -170,7 +172,7 @@ export class ChunkTransformer {
         },
         finish_reason: null
       }],
-      citations: [],
+      citations: params.citations || [],
       created: Math.trunc(Date.now() / 1000)
     }
 
@@ -224,12 +226,6 @@ export class ChunkTransformer {
     }
 
     if (params.done) {
-        if (this.citations.length > 0) {
-          message.citations = this.citations
-          this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
-          message.citations = []
-        }
-
         if (this.config.tools?.length > 0 && this.sentBlockIndex === -1) {
           message.choices[0].delta!.content = this.content
         }
