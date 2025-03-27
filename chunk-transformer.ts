@@ -85,7 +85,7 @@ export class ChunkTransformer {
       case 'dividerLine': {
         const chunkData = chunk as YuanBao.CompletionChunkDivider
         this.send({
-          content: `# ${chunkData.dividerText}`
+          content: `# ${chunkData.dividerText}\n`
         })
         break;
       }
@@ -95,7 +95,7 @@ export class ChunkTransformer {
           table: {
             headers: ['name', 'desc'],
             rows: chunkData.entityList.map(_ => ({
-              title: `${_.name} ${_.reference.map(r => '[' + r + ']').join('')}`,
+              name: this.formatLink(_.name),
               desc: _.desc
             }))
           }
@@ -105,7 +105,8 @@ export class ChunkTransformer {
         })
         break
       }
-      default:
+      case 'timeline':
+        console.log(chunk)
         break;
     }
   }
@@ -252,6 +253,12 @@ export class ChunkTransformer {
 
   getStream() {
     return this.stream
+  }
+
+  formatLink(desc: string) {
+    return desc.replace(/\[(\d+(?:,\d+)*)\]\(@ref\)/g, (_: string, numbers: string) => {
+      return numbers.split(',').map((n: string) => `[${n}]`).join('')
+    })
   }
 }
 
