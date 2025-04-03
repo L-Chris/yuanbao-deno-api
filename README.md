@@ -1,6 +1,6 @@
 # Yuanbao Deno API
 
-基于 Deno 的 API 服务，用于处理 ChatGLM 相关请求。
+基于 Deno 的 元宝大模型 API 服务。
 
 ## 获取Cookie
 
