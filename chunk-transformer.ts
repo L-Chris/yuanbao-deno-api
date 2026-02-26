@@ -2,8 +2,7 @@ import { createParser } from 'eventsource-parser'
 import { OpenAI, YuanBao } from './types.ts'
 import { approximateTokenSize } from 'tokenx'
 import json2md from 'json2md'
-import { uuid } from "./utils.ts";
-import { parseAssistantMessage } from "./assistant-message/index.ts";
+import { safeJSONParse } from "./utils.ts";
 
 export class ChunkTransformer {
   private streamController!: ReadableStreamDefaultController
@@ -18,7 +17,12 @@ export class ChunkTransformer {
   private sentBlockIndex = -1
   private parser = createParser({
     onEvent: e => {
-      this.parse(e)
+      try {
+        this.parse(e)
+      } catch(err) {
+        console.log(err)
+      }
+
     }
   })
   private callbacks: (() => void)[] = []
@@ -39,8 +43,9 @@ export class ChunkTransformer {
     if (!e.data) return
 
     if (/^[[a-z]/.test(e.data)) return
-
-    const chunkData: YuanBao.CompletionChunk = JSON.parse(e.data)
+    const chunkData: YuanBao.CompletionChunk | null = safeJSONParse(e.data)
+    if (!chunkData) return
+    
     const chunkType = this.getChunkType(chunkData)
 
     switch (chunkType) {
@@ -58,6 +63,15 @@ export class ChunkTransformer {
         this.content += thinkChunk.content
         this.send({ 
           reasoning_content: thinkChunk.content
+        })
+        break
+      }
+      case CHUNK_TYPE.DEEPSEARCHING: {
+        const deepChunk = chunkData as YuanBao.CompletionChunkDeepSearch
+        if (!Array.isArray(deepChunk.contents) || !deepChunk.contents[0].msg) return
+        this.content += deepChunk.contents[0].msg
+        this.send({ 
+          reasoning_content: deepChunk.contents[0].msg
         })
         break
       }
@@ -117,6 +131,7 @@ export class ChunkTransformer {
   // 根据对接模型修改
   private getChunkType (chunk: YuanBao.CompletionChunk) {
     if (chunk.type === 'think') return CHUNK_TYPE.THINKING
+    if (chunk.type === 'deepSearch') return CHUNK_TYPE.DEEPSEARCHING
     if (chunk.type === 'text') return CHUNK_TYPE.TEXT
     if (chunk.type === 'searchGuid') return CHUNK_TYPE.SEARCHING_DONE
     if (chunk.type === 'meta') return CHUNK_TYPE.START
@@ -186,45 +201,6 @@ export class ChunkTransformer {
         return
     }
 
-    if (this.config.tools?.length > 0) {
-      const blocks = parseAssistantMessage(this.content)
-      const block = blocks[this.sentBlockIndex + 1]
-      // 只发送完整的块
-      if (block && !block.partial) {
-        if (block.type === 'text') {
-          const thinkingOpenTagIndex = block.content.indexOf('<thinking>')
-          const thinkingCloseTagIndex = block.content.indexOf('</thinking>')
-          if (thinkingOpenTagIndex >= 0 && thinkingCloseTagIndex >= 0) {
-            message.choices[0].delta!.content = block.content.slice(thinkingCloseTagIndex + 11)
-            message.choices[0].delta!.reasoning_content = block.content.slice(thinkingOpenTagIndex + 10, thinkingCloseTagIndex)
-          } else {
-            message.choices[0].delta!.content = block.content
-            message.choices[0].delta!.reasoning_content = ''
-          }
-        } else if (block.type === 'tool_use') {
-          message.choices[0].delta!.content = ''
-          message.choices[0].delta!.reasoning_content = ''
-          message.choices[0].delta!.tool_calls = [
-            {
-              id: uuid(),
-              type: 'function',
-              function: {
-                name: block.params.tool_name!,
-                arguments: block.params.arguments || ''
-              }
-            }
-          ]
-          message.choices[0].finish_reason = 'tool_calls'
-        }
-        // Deno.writeFileSync(`./data/${this.config.chat_id}_res_1.json`, new TextEncoder().encode(JSON.stringify(message)))
-        this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
-        this.sentBlockIndex++
-        message.choices[0].delta!.content = ''
-        message.choices[0].delta!.reasoning_content = ''
-        message.choices[0].delta!.tool_calls = []
-      }
-    }
-
     if (params.done) {
         if (this.config.tools?.length > 0 && this.sentBlockIndex === -1) {
           message.choices[0].delta!.content = this.content
@@ -245,9 +221,7 @@ export class ChunkTransformer {
         return
     }
 
-    if (this.config.tools?.length === 0) {
-      this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
-    }
+    this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
   }
 
   onDone(cb: () => void) {

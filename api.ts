@@ -6,7 +6,7 @@ import { parseAssistantMessage } from './assistant-message/parse-assistant-messa
 
 export async function createConversation (params: {
   config: OpenAI.ChatConfig
-  token: string
+  cookies: YuanBao.Cookies
   messages: YuanBao.Message[]
   urls: YuanBao.Attachment[]
 }) {
@@ -15,9 +15,9 @@ export async function createConversation (params: {
     {
       method: 'POST',
       body: JSON.stringify({
-        agentId: Deno.env.get('agentid')
+        agentId: params.cookies.agentId
       }),
-      headers: generateHeaders(params.token)
+      headers: generateHeaders(params.cookies)
     }
   )
 
@@ -27,10 +27,10 @@ export async function createConversation (params: {
   }
 }
 
-export function removeConversation (convId: string, ticket: string) {
+export function removeConversation (convId: string, cookies: YuanBao.Cookies) {
   return fetch(`https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear${convId}`, {
     method: 'POST',
-    headers: generateHeaders(ticket),
+    headers: generateHeaders(cookies),
     body: JSON.stringify({
       uiOptions: {
         noToast: true
@@ -44,7 +44,7 @@ export async function createCompletionStream (
   params: {
     messages: YuanBao.Message[]
     config: OpenAI.ChatConfig
-    token: string
+    cookies: YuanBao.Cookies
   },
   callback = () => {}
 ) {
@@ -60,7 +60,7 @@ export async function createCompletionStream (
     {
       method: 'POST',
       headers: {
-        ...generateHeaders(params.token),
+        ...generateHeaders(params.cookies),
         Accept: 'text/event-stream'
       },
       body: JSON.stringify({
@@ -77,11 +77,11 @@ export async function createCompletionStream (
           }
         },
         multimedia: [],
-        agentId: Deno.env.get('agentid'),
+        agentId: params.cookies.agentId,
         supportHint: 1,
         version: 'v2',
         chatModelId: params.config.model_name,
-        supportFunctions: [params.config.features.searching ? 'supportInternetSearch' : ''],
+        supportFunctions: [params.config.features.searching ? 'supportInternetSearch' : 'closeInternetSearch'],
         ...(params.config.features.deepsearching ? {
           isAiDeepSearch: true,
           searchDeepMode: true,
@@ -104,7 +104,7 @@ export async function createCompletionStream (
 export async function createCompletion (params: {
   messages: YuanBao.Message[]
   config: OpenAI.ChatConfig
-  token: string
+  cookies: YuanBao.Cookies
 }) {
   const config = params.config
   const isJson = params.config.response_format.type === 'json_schema'
@@ -129,7 +129,7 @@ export async function createCompletion (params: {
 
   const req = await fetch(`https://yuanbao.tencent.com/api/chat/${params.config.chat_id}`, {
     method: 'POST',
-    headers: generateHeaders(params.token),
+    headers: generateHeaders(params.cookies),
     body: JSON.stringify({
       chat_id: config.chat_id,
       model: config.model_name,
@@ -178,7 +178,7 @@ export async function createCompletion (params: {
   )
 }
 
-export async function getModels (params: { token: string }) {
+export async function getModels (cookies: YuanBao.Cookies) {
   return [
     {
       id: 'deep_seek',
@@ -268,17 +268,17 @@ function formatMessageResponse (
   return message
 }
 
-export function generateHeaders (token: string) {
+export function generateHeaders (cookies: YuanBao.Cookies) {
   const Cookie = [
     `hy_source=web`,
-    `hy_user=${Deno.env.get('hy_user')}`,
-    `hy_token=${token}`
+    `hy_user=${cookies.hy_user}`,
+    `hy_token=${cookies.token}`
   ].join('; ')
 
   return {
     Cookie,
     'chat_version': 'v1',
-    'x-agentid': Deno.env.get('agentid') || '',
+    'x-agentid': cookies.agentId,
     'content-type': 'application/json',
     Accept: 'application/json, text/plain, */*',
     'Accept-Encoding': 'gzip',

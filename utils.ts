@@ -3,6 +3,22 @@ import _ from 'lodash'
 import { OpenAI, YuanBao } from "./types.ts";
 import { SYSTEM_PROMPT } from "./assistant-message/prompts.ts";
 
+export function parseAuthHeader (authHeader: string): YuanBao.Cookies {
+  const authContent = authHeader.replace(/^Bearer /, '');
+  
+  const authMap: Record<string, string> = {};
+  authContent.split(' ').forEach(part => {
+    const [key, value] = part.split(':');
+    if (key && value) authMap[key] = value;
+  });
+  
+  return {
+    token: authMap.token,
+    agentId: authMap.agentId,
+    hy_user: authMap.hy_user
+  };
+}
+
 export const uuid = () => crypto.randomUUID()
 
 export const getChatConfig = (body: {
@@ -164,5 +180,13 @@ export const dataUtil = {
       'image/vnd.microsoft.icon',
       'image/x-png'
     ].includes(_)
+  }
+}
+
+export function safeJSONParse(e: any) {
+  try {
+    return JSON.parse(e)
+  } catch(err) {
+    return null
   }
 }

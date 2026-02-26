@@ -106,6 +106,12 @@ export declare namespace OpenAI {
 }
 
 export declare namespace YuanBao {
+  interface Cookies {
+    token: string
+    agentId: string
+    hy_user: string
+  }
+
   interface Message {
     role: OpenAI.Message['role']
     content: string | MessageContent[]
@@ -171,6 +177,20 @@ export declare namespace YuanBao {
     msg: string
     isTitle?: boolean
   }
+
+  type CompletionChunkDeepSearch = {
+      type: 'deepSearch'
+      title: string
+      iconType: string
+      contents: {
+        type: 'text'
+        componentId: string
+        msg: string
+        toolCallName: string
+        state: number
+        docs: any
+      }[]
+    }
 
   type CompletionChunkThink = {
     type: 'think'
@@ -257,7 +277,7 @@ export declare namespace YuanBao {
     dividerText: string
   }
 
-  type CompletionChunk = CompletionChunkSearch | CompletionChunkStep | CompletionChunkText | CompletionChunkThink | CompletionChunkMeta | CompletionChunkComponent | CompletionChunkOutline | CompletionChunkMindmap | CompletionChunkTimeline | CompletionChunkRelevantEntities | CompletionChunkDivider
+  type CompletionChunk = CompletionChunkDeepSearch | CompletionChunkSearch | CompletionChunkStep | CompletionChunkText | CompletionChunkThink | CompletionChunkMeta | CompletionChunkComponent | CompletionChunkOutline | CompletionChunkMindmap | CompletionChunkTimeline | CompletionChunkRelevantEntities | CompletionChunkDivider
 
   interface SearchResult {
     index: number;

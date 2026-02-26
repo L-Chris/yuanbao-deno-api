@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { getChatConfig, mergeMessages } from "./utils.ts";
+import { getChatConfig, mergeMessages, parseAuthHeader } from "./utils.ts";
 import { createCompletion, createCompletionStream, createConversation, getModels, removeConversation } from "./api.ts";
 import { OpenAI, YuanBao } from "./types.ts";
 
@@ -9,7 +9,7 @@ app.get('/', (c) => c.text('Hello World'))
 
 app.post('/v1/chat/completions', async (c) => {
   const authHeader = c.req.header('authorization') || '';
-  const token = authHeader.replace(/^Bearer /, '');
+  const { token, agentId, hy_user } = parseAuthHeader(authHeader);
 
   if (!token) return c.json({
     status: 500,
@@ -40,7 +40,7 @@ app.post('/v1/chat/completions', async (c) => {
   const newMessages = mergeMessages(chatConfig, messages, refs)
   const conversation = await createConversation({
     config: chatConfig,
-    token,
+    cookies: { token, agentId, hy_user },
     messages: newMessages,
     urls: refs,
   })
@@ -52,9 +52,9 @@ app.post('/v1/chat/completions', async (c) => {
   if (chatConfig.stream) {
     const stream = await createCompletionStream({
       config: chatConfig,
-      token: token,
+      cookies: { token, agentId, hy_user },
       messages: newMessages
-    }, () => removeConversation(conversation.id, token))
+    }, () => removeConversation(conversation.id, { token, agentId, hy_user }))
 
     return new Response(stream, {
       headers: {
@@ -66,11 +66,11 @@ app.post('/v1/chat/completions', async (c) => {
   } else {
     const response = await createCompletion({
       config: chatConfig,
-      token: token,
+      cookies: { token, agentId, hy_user },
       messages: newMessages
     })
 
-    removeConversation(conversation.id, token)
+    removeConversation(conversation.id, { token, agentId, hy_user })
 
     return c.json(response)
   }
@@ -78,12 +78,13 @@ app.post('/v1/chat/completions', async (c) => {
 
 app.get('/v1/models', async (c) => {
   const authHeader = c.req.header('authorization') || '';
-  const token = authHeader.replace(/^Bearer /, '');
-  const models = await getModels({ token })
+  const { token, agentId, hy_user } = parseAuthHeader(authHeader);
+  const models = await getModels({ token, agentId, hy_user })
 
   return c.json({
     data: models
   })
 })
 
-export default app
+const port = parseInt(Deno.env.get('PORT') || '8000', 10)
+Deno.serve({ hostname: '0.0.0.0', port }, app.fetch)
