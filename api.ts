@@ -275,11 +275,11 @@ export async function getModels (cookies: YuanBao.Cookies) {
       name: "deepseek_think_search",
     },
     {
-      id: 'hunyuan_gpt_175B_0404_deepsearch',
+      id: 'gpt_175B_0404_deepsearch',
       name: "hunyuan_deepsearch",
     },
     {
-      id: 'hunyuan_gpt_175B_0404',
+      id: 'gpt_175B_0404',
       name: "hunyuan",
     },
     {
@@ -291,7 +291,7 @@ export async function getModels (cookies: YuanBao.Cookies) {
       name: "hunyuan_think_search",
     },
     {
-      id: 'hunyuan_gpt_175B_0404_search',
+      id: 'gpt_175B_0404_search',
       name: "hunyuan_search",
     },
   ]
