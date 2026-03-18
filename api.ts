@@ -111,14 +111,15 @@ export async function createCompletion (params: {
   const lastMessage = params.messages.findLast(_ => _.role === 'user')!
 
   if (isJson) {
-    // 如果是JSON格式，添加特殊指令
+    // 如果是JSON格式，添加特殊指令：只返回数据本身，不要返回带 $schema/type/items 的包装
     const schema = params.config.response_format?.json_schema
-      ? `\n按照以下JSON Schema格式返回：\n${JSON.stringify(
-          params.config.response_format.json_schema,
-          null,
-          2
-        )}`
-      : '\n请以有效的JSON格式返回响应。'
+      ? `
+请严格按照以下 JSON Schema 的结构返回数据，注意：
+- 不要返回多余的额外文本描述，不要返回引用链接如"[citation:1]"，只返回json
+- 只返回json数据本身（例如 schema 要求是 array 就只返回 [...]，是 object 就只返回 {...}），不要返回包含 $schema、type、items 等字段的 schema 包装对象。
+- Schema：
+${JSON.stringify(params.config.response_format.json_schema, null, 2)}`
+      : '\n请以有效的JSON格式返回响应，只返回数据本身，不要返回 schema 包装。'
 
     lastMessage.content = `${
       Array.isArray(lastMessage.content)
