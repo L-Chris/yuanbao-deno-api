@@ -101,6 +101,79 @@ export async function createCompletionStream (
   return parser.getStream()
 }
 
+/** 消费流式响应，累积 content / citations / usage，返回完整 CompletionChunk */
+async function consumeStreamToCompletion(
+  stream: ReadableStream<Uint8Array>,
+  model: string
+): Promise<OpenAI.CompletionChunk> {
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let content = ''
+  let citations: string[] = []
+  let usage: OpenAI.CompletionChunk['usage'] = {
+    prompt_tokens: 1,
+    completion_tokens: 1,
+    total_tokens: 2
+  }
+  let lastError: string | null = null
+
+  const reader = stream.getReader()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const events = buffer.split(/\n\n/)
+      buffer = events.pop() ?? ''
+      for (const event of events) {
+        const line = event.split('\n').find(l => l.startsWith('data: '))
+        if (!line) continue
+        const data = line.slice(6).trim()
+        if (data === '[DONE]') continue
+        try {
+          const chunk: OpenAI.CompletionChunk = JSON.parse(data)
+          if (chunk.error) {
+            lastError = chunk.error.message
+            continue
+          }
+          const delta = chunk.choices?.[0]?.delta
+          if (delta?.content) content += delta.content
+          if (chunk.citations?.length) citations = chunk.citations
+          if (chunk.usage) usage = chunk.usage
+        } catch {
+          // 忽略单条解析失败
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  if (lastError) {
+    throw new Error(lastError)
+  }
+
+  return {
+    id: '',
+    model,
+    object: 'chat.completion',
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: 'assistant',
+          content,
+          tool_calls: []
+        },
+        finish_reason: 'stop'
+      }
+    ],
+    citations,
+    usage,
+    created: Math.trunc(Date.now() / 1000)
+  }
+}
+
 export async function createCompletion (params: {
   messages: YuanBao.Message[]
   config: OpenAI.ChatConfig
@@ -128,55 +201,63 @@ ${JSON.stringify(params.config.response_format.json_schema, null, 2)}`
     }${schema}`
   }
 
-  const req = await fetch(`https://yuanbao.tencent.com/api/chat/${params.config.chat_id}`, {
-    method: 'POST',
-    headers: generateHeaders(params.cookies),
-    body: JSON.stringify({
-      chat_id: config.chat_id,
-      model: config.model_name,
-      incremental_output: false,
-      chat_type: config.chat_type,
-      session_id: uuid(),
-      stream: false,
-      feature_config: {
-        thinking_enabled: params.config.features.thinking
+  const prompt = params.messages.reduce((pre, cur) => {
+    if (Array.isArray(cur.content)) {
+      return pre + cur.content.map(c => c.text).join('\n')
+    } else {
+      return pre + cur.content
+    }
+  }, '')
+
+  const req = await fetch(
+    `https://yuanbao.tencent.com/api/chat/${config.chat_id}`,
+    {
+      method: 'POST',
+      headers: {
+        ...generateHeaders(params.cookies),
+        Accept: 'text/event-stream'
       },
-      messages: params.messages
-    })
-  })
-
-  const body = await req.json()
-
-  const message: OpenAI.CompletionChunk = {
-    id: '',
-    model: config.model_name,
-    object: 'chat.completion',
-    choices: [
-      {
-        index: 0,
-        message: {
-          role: 'assistant',
-          content: body?.choices?.[0]?.message?.content || '',
-          tool_calls: []
+      body: JSON.stringify({
+        model: 'gpt_175B_0404',
+        prompt: prompt,
+        plugin: 'Adaptive',
+        displayPrompt: prompt,
+        displayPromptType: 1,
+        options: {
+          imageIntention: {
+            needIntentionModel: true,
+            backendUpdateFlag: 2,
+            intentionStatus: true
+          }
         },
-        finish_reason: 'stop'
-      }
-    ],
-    citations: [] as string[],
-    usage: {
-      prompt_tokens: 1,
-      completion_tokens: 1,
-      total_tokens: 2
-    },
-    created: Math.trunc(Date.now() / 1000)
+        multimedia: [],
+        agentId: params.cookies.agentId,
+        supportHint: 1,
+        version: 'v2',
+        chatModelId: config.model_name,
+        supportFunctions: [config.features.searching ? 'supportInternetSearch' : 'closeInternetSearch'],
+        ...(config.features.deepsearching ? {
+          isAiDeepSearch: true,
+          searchDeepMode: true,
+          searchDeepModeParentCid: config.chat_id,
+          searchDeepModeParentIndex: 2,
+          searchDeepModeParentRepeatIndex: 0,
+          speechMode: 5
+        } : {})
+      })
+    }
+  )
+
+  const contentType = req.headers.get('content-type') ?? ''
+  if (contentType.indexOf('text/event-stream') < 0) {
+    const text = await req.text()
+    throw new Error(contentType.includes('text/html') ? 'rejected by server' : text || req.statusText)
   }
 
-  return formatMessageResponse(
-    message,
-    params.messages,
-    config.response_format,
-    config.tools
-  )
+  const parser = new ChunkTransformer(req, config, params.messages)
+  const stream = parser.getStream()
+  const message = await consumeStreamToCompletion(stream, config.model_name)
+  return formatMessageResponse(message, params.messages, config.response_format, config.tools)
 }
 
 export async function getModels (cookies: YuanBao.Cookies) {
