@@ -38,7 +38,7 @@ export const getChatConfig = (body: {
   const is_tool_calling = tools.length > 0 && !body.messages.some(m => m.role === 'tool')
   const is_tool_calling_done = tools.length > 0 && body.messages.some(m => m.role === 'tool')
   const returnArtifacts = response_format.type === 'json_schema' || is_tool_calling
-  return {  
+  return {
     model_name: model_name,
     features: {
       thinking: parts.includes('think'),

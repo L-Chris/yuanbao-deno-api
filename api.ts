@@ -283,12 +283,12 @@ export async function getModels (cookies: YuanBao.Cookies) {
       name: "hunyuan",
     },
     {
-      id: 'hunyuan_t1',
-      name: "hunyuan_t1",
+      id: 'hunyuan_t1_think',
+      name: "hunyuan_think",
     },
     {
-      id: 'hunyuan_t1_search',
-      name: "hunyuan_t1_search",
+      id: 'hunyuan_t1_think_search',
+      name: "hunyuan_think_search",
     },
     {
       id: 'hunyuan_gpt_175B_0404_search',
