@@ -1,5 +1,6 @@
 import { crypto } from 'https://deno.land/std/crypto/mod.ts'
 import _ from 'lodash'
+import { jsonrepair } from 'jsonrepair'
 import { OpenAI, YuanBao } from "./types.ts";
 import { SYSTEM_PROMPT } from "./assistant-message/prompts.ts";
 
@@ -136,11 +137,9 @@ export function extractJsonFromContent (data: string) {
   try {
     const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
     const match = data.match(jsonRegex);
-    
-    if (!match || !match[1]) return JSON.parse(data);
-    
-    const jsonString = match[1].trim();
-    return JSON.parse(jsonString);
+
+    const raw = (match && match[1]) ? match[1].trim() : data
+    return JSON.parse(jsonrepair(raw))
   } catch (error) {
     console.error('解析JSON失败:', error);
     return null;

@@ -27,17 +27,19 @@ export async function createConversation (params: {
   }
 }
 
-export function removeConversation (convId: string, cookies: YuanBao.Cookies) {
-  return fetch(`https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear${convId}`, {
+export async function removeConversation (convId: string, cookies: YuanBao.Cookies) {
+  console.log('[yuanbao] removeConversation:', convId)
+  const res = await fetch(`https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear`, {
     method: 'POST',
     headers: generateHeaders(cookies),
     body: JSON.stringify({
+      conversationIds: [convId],
       uiOptions: {
         noToast: true
-      },
-      conversationIds: [convId]
+      }
     })
   })
+  console.log('[yuanbao] removeConversation response:', res.status)
 }
 
 export async function createCompletionStream (
@@ -361,6 +363,18 @@ export function generateHeaders (cookies: YuanBao.Cookies) {
     Cookie,
     'chat_version': 'v1',
     'x-agentid': cookies.agentId,
+    'x-id': cookies.hy_user,
+    't-userid': cookies.hy_user,
+    'x-requested-with': 'XMLHttpRequest',
+    'x-source': 'web',
+    'x-platform': 'win',
+    'x-language': 'zh-CN',
+    'x-webversion': '2.68.1',
+    'x-instance-id': '5',
+    'x-ybuitest': '0',
+    'x-webdriver': '0',
+    'x-web-third-source': 'main',
+    'x-os-version': 'Windows(10)-Blink',
     'content-type': 'application/json',
     Accept: 'application/json, text/plain, */*',
     'Accept-Encoding': 'gzip',
@@ -369,14 +383,14 @@ export function generateHeaders (cookies: YuanBao.Cookies) {
     Origin: 'https://yuanbao.tencent.com',
     Pragma: 'no-cache',
     'Sec-Ch-Ua':
-      '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+      '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
     'Sec-Ch-Ua-Mobile': '?0',
     'Sec-Ch-Ua-Platform': '"Windows"',
     'Sec-Fetch-Dest': 'empty',
     'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-site',
+    'Sec-Fetch-Site': 'same-origin',
     Referer: 'https://yuanbao.tencent.com',
     'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0'
   }
 }

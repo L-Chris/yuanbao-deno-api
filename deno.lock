@@ -1,9 +1,10 @@
 {
-  "version": "4",
+  "version": "5",
   "specifiers": {
     "jsr:@hono/hono@^4.7.2": "4.7.2",
     "npm:eventsource-parser@3": "3.0.0",
     "npm:json2md@^2.0.2": "2.0.2",
+    "npm:jsonrepair@3": "3.14.0",
     "npm:lodash@^4.17.21": "4.17.21",
     "npm:mime@^4.0.6": "4.0.6",
     "npm:tokenx@~0.4.1": "0.4.1"
@@ -26,11 +27,16 @@
         "indento"
       ]
     },
+    "jsonrepair@3.14.0": {
+      "integrity": "sha512-tWPGKMZf/8UPim+fcW2EfcQ/d/7aKUrP6IECz9G3Tu6Q5dX0orSleqJ9z6sSw7qrQkjF8/Edo4DvsWBZ8H+HNg==",
+      "bin": true
+    },
     "lodash@4.17.21": {
       "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="
     },
     "mime@4.0.6": {
-      "integrity": "sha512-4rGt7rvQHBbaSOF9POGkk1ocRP16Md1x36Xma8sz8h8/vfCUI2OtEIeCqe4Ofes853x4xDoPiFLIT47J5fI/7A=="
+      "integrity": "sha512-4rGt7rvQHBbaSOF9POGkk1ocRP16Md1x36Xma8sz8h8/vfCUI2OtEIeCqe4Ofes853x4xDoPiFLIT47J5fI/7A==",
+      "bin": true
     },
     "tokenx@0.4.1": {
       "integrity": "sha512-LCMniis0WsHel07xh3K9OIt5c9Xla1awtOoWBmUHZBQR7pvTvgGFuYpLiCZWohXPC1YuZORnN0+fCVYI/ie8Jg=="
@@ -136,6 +142,7 @@
       "jsr:@hono/hono@^4.7.2",
       "npm:eventsource-parser@3",
       "npm:json2md@^2.0.2",
+      "npm:jsonrepair@3",
       "npm:lodash@^4.17.21",
       "npm:mime@^4.0.6",
       "npm:tokenx@~0.4.1"

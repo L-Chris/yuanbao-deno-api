@@ -1,23 +1,42 @@
-import { Hono } from 'hono'
+import { Hono } from "hono";
 import { getChatConfig, mergeMessages, parseAuthHeader } from "./utils.ts";
-import { createCompletion, createCompletionStream, createConversation, getModels, removeConversation } from "./api.ts";
+import {
+  createCompletion,
+  createCompletionStream,
+  createConversation,
+  getModels,
+  removeConversation,
+} from "./api.ts";
 import { OpenAI, YuanBao } from "./types.ts";
 
-const app = new Hono()
+const app = new Hono();
 
-app.get('/', (c) => c.text('Hello World'))
+app.onError((err, c) => {
+  console.error(err);
+  return c.json({
+    error: {
+      message: err instanceof Error ? err.message : String(err),
+      type: "server_error",
+      code: "internal_server_error",
+    },
+  }, 500);
+});
 
-app.post('/v1/chat/completions', async (c) => {
-  const authHeader = c.req.header('authorization') || '';
+app.get("/", (c) => c.text("Hello World"));
+
+app.post("/v1/chat/completions", async (c) => {
+  const authHeader = c.req.header("authorization") || "";
   const { token, agentId, hy_user } = parseAuthHeader(authHeader);
 
-  if (!token) return c.json({
-    status: 500,
-    message: 'need token'
-  })
+  if (!token) {
+    return c.json({
+      status: 500,
+      message: "need token",
+    });
+  }
 
-  const body = await c.req.json()
-  const messages: OpenAI.Message[] = body?.messages || [] 
+  const body = await c.req.json();
+  const messages: OpenAI.Message[] = body?.messages || [];
 
   const chatConfig = getChatConfig({
     chat_id: body.id,
@@ -26,25 +45,27 @@ app.post('/v1/chat/completions', async (c) => {
     response_format: body.response_format,
     tools: body.tools,
     tool_choice: body.tool_choice,
-    messages: messages
-  })
+    messages: messages,
+  });
 
-  if (!Array.isArray(messages) || messages.length === 0) return c.json({
-    status: 500,
-    message: 'need message'
-  })
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return c.json({
+      status: 500,
+      message: "need message",
+    });
+  }
 
   // const urls = extractFileUrlsFromMessages(messages)
   // await Promise.all(urls.map(_ => uploadFile(_, token)))
-  const refs: YuanBao.Attachment[] = []
-  const newMessages = mergeMessages(chatConfig, messages, refs)
+  const refs: YuanBao.Attachment[] = [];
+  const newMessages = mergeMessages(chatConfig, messages, refs);
   const conversation = await createConversation({
     config: chatConfig,
     cookies: { token, agentId, hy_user },
     messages: newMessages,
     urls: refs,
-  })
-  chatConfig.chat_id = conversation.id
+  });
+  chatConfig.chat_id = conversation.id;
   // Deno.writeFileSync(`./data/${conversation.id}_req.json`, new TextEncoder().encode(JSON.stringify({
   //   body: body,
   //   new: newMessages
@@ -53,38 +74,38 @@ app.post('/v1/chat/completions', async (c) => {
     const stream = await createCompletionStream({
       config: chatConfig,
       cookies: { token, agentId, hy_user },
-      messages: newMessages
-    }, () => removeConversation(conversation.id, { token, agentId, hy_user }))
+      messages: newMessages,
+    }, () => removeConversation(conversation.id, { token, agentId, hy_user }));
 
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      }
-    })
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
   } else {
     const response = await createCompletion({
       config: chatConfig,
       cookies: { token, agentId, hy_user },
-      messages: newMessages
-    })
+      messages: newMessages,
+    });
 
-    removeConversation(conversation.id, { token, agentId, hy_user })
+    removeConversation(conversation.id, { token, agentId, hy_user });
 
-    return c.json(response)
+    return c.json(response);
   }
-})
+});
 
-app.get('/v1/models', async (c) => {
-  const authHeader = c.req.header('authorization') || '';
+app.get("/v1/models", async (c) => {
+  const authHeader = c.req.header("authorization") || "";
   const { token, agentId, hy_user } = parseAuthHeader(authHeader);
-  const models = await getModels({ token, agentId, hy_user })
+  const models = await getModels({ token, agentId, hy_user });
 
   return c.json({
-    data: models
-  })
-})
+    data: models,
+  });
+});
 
-const port = parseInt(Deno.env.get('PORT') || '8000', 10)
-Deno.serve({ hostname: '0.0.0.0', port }, app.fetch)
+const port = parseInt(Deno.env.get("PORT") || "8000", 10);
+Deno.serve({ hostname: "0.0.0.0", port }, app.fetch);
