@@ -1,8 +1,8 @@
-import { uuid, extractJsonFromContent } from './utils.ts'
+import { BracketToolProtocol } from 'chat-base'
+import { extractJsonFromContent } from './utils.ts'
 import { OpenAI, YuanBao } from './types.ts'
 import { approximateTokenSize } from 'tokenx'
 import { ChunkTransformer } from './chunk-transformer.ts'
-import { parseAssistantMessage } from './assistant-message/parse-assistant-message.ts'
 
 export async function createConversation (params: {
   config: OpenAI.ChatConfig
@@ -333,21 +333,11 @@ function formatMessageResponse (
   }
 
   if (!tools?.length) return message
-  const blocks = parseAssistantMessage(message.choices[0].message.content)
-  message.choices[0].message.content = blocks
-    .filter(_ => _.type === 'text')
-    .map(_ => _.content)
-    .join('')
-  message.choices[0].message.tool_calls = blocks
-    .filter(_ => _.type === 'tool_use')
-    .map(_ => ({
-      id: uuid(),
-      type: 'function',
-      function: {
-        name: _.params.tool_name!,
-        arguments: _.params.arguments || ''
-      }
-    }))
+  const { cleanContent, toolCalls } = new BracketToolProtocol().parse(
+    message.choices[0].message.content
+  )
+  message.choices[0].message.content = cleanContent
+  message.choices[0].message.tool_calls = toolCalls
 
   return message
 }
