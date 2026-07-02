@@ -1,7 +1,7 @@
 {
   "imports": {
     "json2md": "npm:json2md@^2.0.2",
-    "chat-base": "jsr:@rethinkos/chat-base@0.3.0"
+    "chat-base": "jsr:@rethinkos/chat-base@0.4.0"
   },
   "tasks": {
     "start": "deno run --allow-net --allow-read --allow-sys --allow-write --allow-env main.ts"

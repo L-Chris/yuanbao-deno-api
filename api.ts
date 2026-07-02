@@ -1,14 +1,17 @@
-import {
-  BracketToolProtocol,
-  buildJsonObjectPrompt,
-  buildJsonSchemaPrompt,
-  collectOpenAIStream,
-  createChatCompletion,
-  normalizeJsonSchema,
-} from "chat-base";
-import { extractJsonFromContent } from "./utils.ts";
+import { appendJsonSchemaPrompt, ProviderApiClient } from "chat-base";
 import { OpenAI, YuanBao } from "./types.ts";
 import { ChunkTransformer } from "./chunk-transformer.ts";
+
+const apiClient = new ProviderApiClient({ name: "yuanbao" });
+
+const REQUEST_URL = {
+  CREATE_CONVERSATION:
+    "https://yuanbao.tencent.com/api/user/agent/conversation/create",
+  REMOVE_CONVERSATION:
+    "https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear",
+  CREATE_COMPLETION: (chatId: string) =>
+    `https://yuanbao.tencent.com/api/chat/${chatId}`,
+};
 
 export async function createConversation(params: {
   config: OpenAI.ChatConfig;
@@ -16,18 +19,17 @@ export async function createConversation(params: {
   messages: YuanBao.Message[];
   urls: YuanBao.Attachment[];
 }) {
-  const result = await fetch(
-    "https://yuanbao.tencent.com/api/user/agent/conversation/create",
-    {
+  const json = await apiClient.json<{ id: string }>({
+    url: REQUEST_URL.CREATE_CONVERSATION,
+    init: {
       method: "POST",
       body: JSON.stringify({
         agentId: params.cookies.agentId,
       }),
       headers: generateHeaders(params.cookies),
     },
-  );
+  });
 
-  const json = await result.json();
   return {
     id: json.id,
   };
@@ -38,9 +40,9 @@ export async function removeConversation(
   cookies: YuanBao.Cookies,
 ) {
   console.log("[yuanbao] removeConversation:", convId);
-  const res = await fetch(
-    `https://yuanbao.tencent.com/api/user/agent/conversation/v1/clear`,
-    {
+  const res = await apiClient.request({
+    url: REQUEST_URL.REMOVE_CONVERSATION,
+    init: {
       method: "POST",
       headers: generateHeaders(cookies),
       body: JSON.stringify({
@@ -50,7 +52,7 @@ export async function removeConversation(
         },
       }),
     },
-  );
+  });
   console.log("[yuanbao] removeConversation response:", res.status);
 }
 
@@ -62,63 +64,12 @@ export async function createCompletionStream(
   },
   callback = () => {},
 ) {
-  const prompt = params.messages.reduce((pre, cur) => {
-    if (Array.isArray(cur.content)) {
-      return pre + cur.content.map((c) => c.text).join("\n");
-    } else {
-      return pre + cur.content;
-    }
-  }, "");
-  const req = await fetch(
-    `https://yuanbao.tencent.com/api/chat/${params.config.chat_id}`,
-    {
-      method: "POST",
-      headers: {
-        ...generateHeaders(params.cookies),
-        Accept: "text/event-stream",
-      },
-      body: JSON.stringify({
-        model: "gpt_175B_0404",
-        prompt: prompt,
-        plugin: "Adaptive",
-        displayPrompt: prompt,
-        displayPromptType: 1,
-        options: {
-          imageIntention: {
-            needIntentionModel: true,
-            backendUpdateFlag: 2,
-            intentionStatus: true,
-          },
-        },
-        multimedia: [],
-        agentId: params.cookies.agentId,
-        supportHint: 1,
-        version: "v2",
-        chatModelId: params.config.model_name,
-        supportFunctions: [
-          params.config.features.searching
-            ? "supportInternetSearch"
-            : "closeInternetSearch",
-        ],
-        ...(params.config.features.deepsearching
-          ? {
-            isAiDeepSearch: true,
-            searchDeepMode: true,
-            searchDeepModeParentCid: params.config.chat_id,
-            searchDeepModeParentIndex: 2,
-            searchDeepModeParentRepeatIndex: 0,
-            speechMode: 5,
-          }
-          : {}),
-      }),
-    },
-  );
-
-  const parser = new ChunkTransformer(req, params.config, params.messages);
-
-  parser.onDone(callback);
-
-  return parser.getStream();
+  return await apiClient.createCompletionStream({
+    request: buildCompletionRequest(params),
+    createTransformer: (response) =>
+      new ChunkTransformer(response, params.config, params.messages),
+    onDone: callback,
+  });
 }
 
 export async function createCompletion(params: {
@@ -126,107 +77,98 @@ export async function createCompletion(params: {
   config: OpenAI.ChatConfig;
   cookies: YuanBao.Cookies;
 }) {
-  const config = params.config;
-  const isJson = params.config.response_format.type === "json_schema";
-  const lastMessage = params.messages.findLast((_) => _.role === "user")!;
+  const messages = appendJsonSchemaPrompt(
+    params.messages,
+    params.config.response_format,
+  ) as YuanBao.Message[];
 
-  if (isJson) {
-    const schema = normalizeJsonSchema(params.config.response_format);
-    const schemaPrompt = schema
-      ? buildJsonSchemaPrompt(schema)
-      : buildJsonObjectPrompt();
+  return await apiClient.createCompletion({
+    request: buildCompletionRequest({ ...params, messages }),
+    model: params.config.model_name,
+    messages,
+    responseFormat: params.config.response_format,
+    tools: params.config.tools,
+    createTransformer: (response) =>
+      new ChunkTransformer(response, params.config, messages),
+  });
+}
 
-    lastMessage.content = `${
-      Array.isArray(lastMessage.content)
-        ? lastMessage.content[0].text
-        : lastMessage.content
-    }${schemaPrompt}`;
-  }
+function buildCompletionRequest(params: {
+  messages: YuanBao.Message[];
+  config: OpenAI.ChatConfig;
+  cookies: YuanBao.Cookies;
+}) {
+  const prompt = messagesToPrompt(params.messages);
 
-  const prompt = params.messages.reduce((pre, cur) => {
-    if (Array.isArray(cur.content)) {
-      return pre + cur.content.map((c) => c.text).join("\n");
-    } else {
-      return pre + cur.content;
-    }
-  }, "");
-
-  const req = await fetch(
-    `https://yuanbao.tencent.com/api/chat/${config.chat_id}`,
-    {
+  return {
+    url: REQUEST_URL.CREATE_COMPLETION(params.config.chat_id),
+    init: {
       method: "POST",
       headers: {
         ...generateHeaders(params.cookies),
         Accept: "text/event-stream",
       },
-      body: JSON.stringify({
-        model: "gpt_175B_0404",
-        prompt: prompt,
-        plugin: "Adaptive",
-        displayPrompt: prompt,
-        displayPromptType: 1,
-        options: {
-          imageIntention: {
-            needIntentionModel: true,
-            backendUpdateFlag: 2,
-            intentionStatus: true,
-          },
-        },
-        multimedia: [],
-        agentId: params.cookies.agentId,
-        supportHint: 1,
-        version: "v2",
-        chatModelId: config.model_name,
-        supportFunctions: [
-          config.features.searching
-            ? "supportInternetSearch"
-            : "closeInternetSearch",
-        ],
-        ...(config.features.deepsearching
-          ? {
-            isAiDeepSearch: true,
-            searchDeepMode: true,
-            searchDeepModeParentCid: config.chat_id,
-            searchDeepModeParentIndex: 2,
-            searchDeepModeParentRepeatIndex: 0,
-            speechMode: 5,
-          }
-          : {}),
-      }),
+      body: JSON.stringify(buildCompletionBody({
+        prompt,
+        config: params.config,
+        cookies: params.cookies,
+      })),
     },
+  };
+}
+
+function buildCompletionBody(params: {
+  prompt: string;
+  config: OpenAI.ChatConfig;
+  cookies: YuanBao.Cookies;
+}) {
+  const { prompt, config, cookies } = params;
+
+  return {
+    model: "gpt_175B_0404",
+    prompt,
+    plugin: "Adaptive",
+    displayPrompt: prompt,
+    displayPromptType: 1,
+    options: {
+      imageIntention: {
+        needIntentionModel: true,
+        backendUpdateFlag: 2,
+        intentionStatus: true,
+      },
+    },
+    multimedia: [],
+    agentId: cookies.agentId,
+    supportHint: 1,
+    version: "v2",
+    chatModelId: config.model_name,
+    supportFunctions: [
+      config.features.searching
+        ? "supportInternetSearch"
+        : "closeInternetSearch",
+    ],
+    ...(config.features.deepsearching
+      ? {
+        isAiDeepSearch: true,
+        searchDeepMode: true,
+        searchDeepModeParentCid: config.chat_id,
+        searchDeepModeParentIndex: 2,
+        searchDeepModeParentRepeatIndex: 0,
+        speechMode: 5,
+      }
+      : {}),
+  };
+}
+
+function messagesToPrompt(messages: YuanBao.Message[]): string {
+  return messages.reduce(
+    (previous, current) =>
+      previous +
+      (Array.isArray(current.content)
+        ? current.content.map((item) => item.text ?? "").join("\n")
+        : current.content),
+    "",
   );
-
-  const contentType = req.headers.get("content-type") ?? "";
-  if (contentType.indexOf("text/event-stream") < 0) {
-    const text = await req.text();
-    throw new Error(
-      contentType.includes("text/html")
-        ? "rejected by server"
-        : text || req.statusText,
-    );
-  }
-
-  const parser = new ChunkTransformer(req, config, params.messages);
-  const stream = parser.getStream();
-  const collected = await collectOpenAIStream(stream, {
-    model: config.model_name,
-  });
-  const message = createChatCompletion({
-    id: collected.id,
-    model: config.model_name,
-    content: collected.content,
-    reasoningContent: collected.reasoningContent,
-    toolCalls: collected.toolCalls,
-    finishReason: collected.finishReason,
-    citations: collected.citations,
-    created: collected.created,
-    usage: collected.usage ?? {
-      prompt_tokens: 1,
-      completion_tokens: 1,
-      total_tokens: 2,
-    },
-  });
-  return formatMessageResponse(message, config.response_format, config.tools);
 }
 
 export async function getModels(cookies: YuanBao.Cookies) {
@@ -264,31 +206,6 @@ export async function getModels(cookies: YuanBao.Cookies) {
       name: "hunyuan_search",
     },
   ];
-}
-
-function formatMessageResponse(
-  message: OpenAI.CompletionChunk,
-  response_format?: OpenAI.ChatConfig["response_format"],
-  tools?: OpenAI.Tool[],
-) {
-  if (!message.choices[0].message) return message;
-  const content = message.choices[0].message.content ?? "";
-
-  if (response_format?.type === "json_schema") {
-    const json = extractJsonFromContent(content);
-    if (json) {
-      message.choices[0].message.content = JSON.stringify(json);
-    }
-  }
-
-  if (!tools?.length) return message;
-  const { cleanContent, toolCalls } = new BracketToolProtocol().parse(
-    message.choices[0].message.content ?? "",
-  );
-  message.choices[0].message.content = cleanContent;
-  message.choices[0].message.tool_calls = toolCalls;
-
-  return message;
 }
 
 export function generateHeaders(cookies: YuanBao.Cookies) {

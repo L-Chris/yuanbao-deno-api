@@ -1,4 +1,5 @@
 import {
+  CHUNK_TYPE,
   type EventSourceMessage,
   JsonEventSourceOpenAITransformer,
   type OpenAIStreamWriter,
@@ -114,17 +115,4 @@ export class ChunkTransformer
         numbers.split(",").map((number) => `[${number}]`).join(""),
     );
   }
-}
-
-export enum CHUNK_TYPE {
-  ERROR = "ERROR",
-  START = "START",
-  DEEPSEARCHING = "DEEPSEARCHING",
-  SEARCHING = "SEARCHING",
-  SEARCHING_DONE = "SEARCHING_DONE",
-  THINKING = "THINKING",
-  TEXT = "TEXT",
-  SUGGESTION = "SUGGESTION",
-  DONE = "DONE",
-  NONE = "NONE",
 }

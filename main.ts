@@ -7,11 +7,11 @@ import {
   type ChatCompletionRequest,
   type ChatMessage,
   type ListModelsResponse,
+  mergeMessages,
   ModelFlagChatConfigStrategy,
   parseKeyValueBearer,
   type RequestContext,
 } from "chat-base";
-import { mergeMessages } from "./utils.ts";
 import {
   createCompletion,
   createCompletionStream,
@@ -71,7 +71,7 @@ class YuanBaoProvider extends BaseChatProvider<YuanBao.Cookies> {
     const config = toYuanBaoConfig(input.config);
     const messages = input.messages as OpenAI.Message[];
     const refs: YuanBao.Attachment[] = [];
-    const newMessages = mergeMessages(config, messages, refs);
+    const newMessages = toYuanBaoMessages(config, messages, refs);
     const conversation = await createConversation({
       config,
       cookies: input.context.auth,
@@ -102,7 +102,7 @@ class YuanBaoProvider extends BaseChatProvider<YuanBao.Cookies> {
     const config = toYuanBaoConfig(input.config);
     const messages = input.messages as OpenAI.Message[];
     const refs: YuanBao.Attachment[] = [];
-    const newMessages = mergeMessages(config, messages, refs);
+    const newMessages = toYuanBaoMessages(config, messages, refs);
     const conversation = await createConversation({
       config,
       cookies: input.context.auth,
@@ -144,6 +144,26 @@ function toYuanBaoConfig(config: BaseChatConfig): OpenAI.ChatConfig {
     is_tool_calling: config.isToolCalling,
     is_tool_calling_done: config.isToolCallingDone,
   };
+}
+
+function toYuanBaoMessages(
+  config: OpenAI.ChatConfig,
+  messages: OpenAI.Message[],
+  refs: YuanBao.Attachment[],
+): YuanBao.Message[] {
+  return mergeMessages<YuanBao.Attachment, YuanBao.Message>(messages, {
+    attachments: refs,
+    tools: config.tools,
+    toolChoice: config.tool_choice,
+    toolPromptMode: "when-missing-system",
+    buildUserContent: (content, attachments) => [
+      { type: "text", text: content },
+      ...attachments.map((item) => ({
+        type: item.type,
+        image: item.id,
+      })),
+    ],
+  });
 }
 
 const server = new ChatApiServer({
