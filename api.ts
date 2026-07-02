@@ -171,7 +171,7 @@ function messagesToPrompt(messages: YuanBao.Message[]): string {
   );
 }
 
-export async function getModels(cookies: YuanBao.Cookies) {
+export function getModels(_cookies: YuanBao.Cookies) {
   return [
     {
       id: "deep_seek",

@@ -2,18 +2,18 @@
   "version": "5",
   "specifiers": {
     "jsr:@hono/hono@^4.8.0": "4.12.27",
-    "jsr:@rethinkos/chat-base@0.4.0": "0.4.0",
+    "jsr:@rethinkos/chat-base@0.7.1": "0.7.1",
     "npm:eventsource-parser@3": "3.1.0",
     "npm:json2md@^2.0.2": "2.0.3",
-    "npm:jsonrepair@^3.12.0": "3.14.0",
+    "npm:jsonrepair@^3.12.0": "3.14.1",
     "npm:tokenx@~0.4.1": "0.4.1"
   },
   "jsr": {
     "@hono/hono@4.12.27": {
       "integrity": "3acc640592008e43f7048e8e53275203e0da84fbcd50201121195da7560583dc"
     },
-    "@rethinkos/chat-base@0.4.0": {
-      "integrity": "f098a90c823e3e78f45f6af49d9c1bbffc58923fdf9cb6c798f21566359568cc",
+    "@rethinkos/chat-base@0.7.1": {
+      "integrity": "ce0a501ca86add29b69d9914888cdf24a6a308ee43cfe21f4d7fbabfab70e9cc",
       "dependencies": [
         "jsr:@hono/hono",
         "npm:eventsource-parser",
@@ -35,8 +35,8 @@
         "indento"
       ]
     },
-    "jsonrepair@3.14.0": {
-      "integrity": "sha512-tWPGKMZf/8UPim+fcW2EfcQ/d/7aKUrP6IECz9G3Tu6Q5dX0orSleqJ9z6sSw7qrQkjF8/Edo4DvsWBZ8H+HNg==",
+    "jsonrepair@3.14.1": {
+      "integrity": "sha512-NpGgMhmzG/fajkBEFlS9jZvMSGDvc2xN/9wNCHZ+Nx32GZfLRELU6UE6dQkebvrQUct9S+7bvnpX29NB36Qbdw==",
       "bin": true
     },
     "tokenx@0.4.1": {
@@ -45,7 +45,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@rethinkos/chat-base@0.4.0",
+      "jsr:@rethinkos/chat-base@0.7.1",
       "npm:json2md@^2.0.2"
     ]
   }

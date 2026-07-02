@@ -22,7 +22,7 @@ export declare namespace YuanBao {
     user_id: string;
     hash: string | null;
     filename: string;
-    data: Record<string, any>;
+    data: Record<string, unknown>;
     meta: {
       name: string;
       content_type: string;
@@ -77,7 +77,7 @@ export declare namespace YuanBao {
       msg: string;
       toolCallName: string;
       state: number;
-      docs: any;
+      docs: unknown;
     }[];
   };
 
@@ -157,7 +157,7 @@ export declare namespace YuanBao {
 
   type CompletionChunkTimeline = {
     type: "timeline";
-    timelineList: any[];
+    timelineList: unknown[];
   };
 
   type CompletionChunkRelevantEntities = {
