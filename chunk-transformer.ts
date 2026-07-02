@@ -1,259 +1,130 @@
-import { createParser } from 'eventsource-parser'
-import { OpenAI, YuanBao } from './types.ts'
-import { approximateTokenSize } from 'tokenx'
-import json2md from 'json2md'
-import { safeJSONParse } from "./utils.ts";
+import {
+  type EventSourceMessage,
+  JsonEventSourceOpenAITransformer,
+  type OpenAIStreamWriter,
+} from "chat-base";
+import json2md from "json2md";
+import { OpenAI, YuanBao } from "./types.ts";
 
-export class ChunkTransformer {
-  private streamController!: ReadableStreamDefaultController
-  private stream: ReadableStream
-  private encoder = new TextEncoder()
-  private decoder = new TextDecoder()
-  private content = ''
-  private config: OpenAI.ChatConfig
-  private isThinking = false
-  private messages: OpenAI.Message[] = []
-  private citations: string[] = []
-  private sentBlockIndex = -1
-  private parser = createParser({
-    onEvent: e => {
-      try {
-        this.parse(e)
-      } catch(err) {
-        console.log(err)
-      }
-
-    }
-  })
-  private callbacks: (() => void)[] = []
-
-  constructor (req: Response, config: OpenAI.ChatConfig, messages: OpenAI.Message[]) {
-    this.messages = messages
-    this.config = config
-    this.stream = new ReadableStream({
-      start: controller => {
-        this.streamController = controller
-        this.read(req)
-      }
-    })
+export class ChunkTransformer
+  extends JsonEventSourceOpenAITransformer<YuanBao.CompletionChunk> {
+  constructor(
+    req: Response,
+    config: OpenAI.ChatConfig,
+    messages: OpenAI.Message[],
+  ) {
+    super(req, {
+      model: config.model_name,
+      messages,
+    });
   }
 
-  // 根据对接模型修改
-  private parse (e: EventSourceMessage) {
-    if (!e.data) return
+  protected override shouldSkipEvent(event: EventSourceMessage): boolean {
+    return /^[[a-z]/.test(event.data);
+  }
 
-    if (/^[[a-z]/.test(e.data)) return
-    const chunkData: YuanBao.CompletionChunk | null = safeJSONParse(e.data)
-    if (!chunkData) return
-    
-    const chunkType = this.getChunkType(chunkData)
-
-    switch (chunkType) {
+  protected handleChunk(
+    chunk: YuanBao.CompletionChunk,
+    _event: EventSourceMessage,
+    writer: OpenAIStreamWriter,
+  ): void {
+    switch (this.getChunkType(chunk)) {
       case CHUNK_TYPE.TEXT: {
-        const textChunk = chunkData as YuanBao.CompletionChunkText
-        if (!textChunk.msg) return
-        this.content += textChunk.msg
-        this.send({ 
-          content: textChunk.msg
-        })
-        break
+        const textChunk = chunk as YuanBao.CompletionChunkText;
+        if (textChunk.msg) writer.write({ content: textChunk.msg });
+        return;
       }
       case CHUNK_TYPE.THINKING: {
-        const thinkChunk = chunkData as YuanBao.CompletionChunkThink
-        this.content += thinkChunk.content
-        this.send({ 
-          reasoning_content: thinkChunk.content
-        })
-        break
+        const thinkChunk = chunk as YuanBao.CompletionChunkThink;
+        if (thinkChunk.content) {
+          writer.write({ reasoningContent: thinkChunk.content });
+        }
+        return;
       }
       case CHUNK_TYPE.DEEPSEARCHING: {
-        const deepChunk = chunkData as YuanBao.CompletionChunkDeepSearch
-        if (!Array.isArray(deepChunk.contents) || !deepChunk.contents[0].msg) return
-        this.content += deepChunk.contents[0].msg
-        this.send({ 
-          reasoning_content: deepChunk.contents[0].msg
-        })
-        break
+        const deepChunk = chunk as YuanBao.CompletionChunkDeepSearch;
+        const message = deepChunk.contents?.[0]?.msg;
+        if (message) writer.write({ reasoningContent: message });
+        return;
       }
-      // 有可能触发多次，在结束前发送即可
       case CHUNK_TYPE.SEARCHING_DONE: {
-        const searchChunk = chunkData as YuanBao.CompletionChunkSearch
-        this.citations = searchChunk.docs.map(doc => doc.url)
-        this.send({ citations: this.citations })
-        break
+        const searchChunk = chunk as YuanBao.CompletionChunkSearch;
+        writer.write({ citations: searchChunk.docs.map((doc) => doc.url) });
+        return;
       }
       default:
-        this.renderChunk(chunkData)
-        break
+        this.renderChunk(chunk, writer);
+        return;
     }
   }
 
-  private renderChunk(chunk: YuanBao.CompletionChunk) {
+  private renderChunk(
+    chunk: YuanBao.CompletionChunk,
+    writer: OpenAIStreamWriter,
+  ): void {
     switch (chunk.type) {
-      case 'outline': {
-        const chunkData = chunk as YuanBao.CompletionChunkOutline
-        this.send({
-          content: `# 研究大纲\n${chunkData.outlineList.map(_ => '- ' + _).join('\n')}`
-        })
-        break;
+      case "outline": {
+        const chunkData = chunk as YuanBao.CompletionChunkOutline;
+        writer.write({
+          content: `# 研究大纲\n${
+            chunkData.outlineList.map((item) => `- ${item}`).join("\n")
+          }`,
+        });
+        return;
       }
-      case 'dividerLine': {
-        const chunkData = chunk as YuanBao.CompletionChunkDivider
-        this.send({
-          content: `\n# ${chunkData.dividerText}\n`
-        })
-        break;
+      case "dividerLine": {
+        const chunkData = chunk as YuanBao.CompletionChunkDivider;
+        writer.write({ content: `\n# ${chunkData.dividerText}\n` });
+        return;
       }
-      case 'relevantEntities': {
-        const chunkData = chunk as YuanBao.CompletionChunkRelevantEntities
+      case "relevantEntities": {
+        const chunkData = chunk as YuanBao.CompletionChunkRelevantEntities;
         const tableMark = json2md({
           table: {
-            headers: ['name', 'desc'],
-            rows: chunkData.entityList.map(_ => ({
-              name: this.formatLink(_.name),
-              desc: _.desc
-            }))
-          }
-        })
-        this.send({
-          content: `\n# 相关组织及人物\n${tableMark}`
-        })
-        break
+            headers: ["name", "desc"],
+            rows: chunkData.entityList.map((item) => ({
+              name: this.formatLink(item.name),
+              desc: item.desc,
+            })),
+          },
+        });
+        writer.write({ content: `\n# 相关组织及人物\n${tableMark}` });
+        return;
       }
       default:
-        if (!['components', 'mindmap', 'meta', 'step'].includes(chunk.type)) {
-          console.log(chunk)
+        if (!["components", "mindmap", "meta", "step"].includes(chunk.type)) {
+          console.log(chunk);
         }
-        break
     }
   }
 
-  // 根据对接模型修改
-  private getChunkType (chunk: YuanBao.CompletionChunk) {
-    if (chunk.type === 'think') return CHUNK_TYPE.THINKING
-    if (chunk.type === 'deepSearch') return CHUNK_TYPE.DEEPSEARCHING
-    if (chunk.type === 'text') return CHUNK_TYPE.TEXT
-    if (chunk.type === 'searchGuid') return CHUNK_TYPE.SEARCHING_DONE
-    if (chunk.type === 'meta') return CHUNK_TYPE.START
-    return CHUNK_TYPE.NONE
+  private getChunkType(chunk: YuanBao.CompletionChunk): CHUNK_TYPE {
+    if (chunk.type === "think") return CHUNK_TYPE.THINKING;
+    if (chunk.type === "deepSearch") return CHUNK_TYPE.DEEPSEARCHING;
+    if (chunk.type === "text") return CHUNK_TYPE.TEXT;
+    if (chunk.type === "searchGuid") return CHUNK_TYPE.SEARCHING_DONE;
+    if (chunk.type === "meta") return CHUNK_TYPE.START;
+    return CHUNK_TYPE.NONE;
   }
 
-  private async read (req: Response) {
-    if (!this.streamController) return
-    try {
-      const contentType = req.headers.get('content-type') || ''
-      if (contentType.indexOf('text/event-stream') < 0) {
-        const body = await req.text()
-        this.send({ error: contentType === 'text/html' ? 'rejected by server' : body })
-        this.send({ done: true })
-        return
-      }
-
-      const reader = req.body!.getReader()
-      while (true) {
-        const { done, value } = await reader.read()
-        // console.log('read', done, decodedValue)
-        if (done) {
-          this.send({ done: true })
-          return
-        }
-        const decodedValue = this.decoder.decode(value)
-        this.parser.feed(decodedValue)
-      }
-    } catch (err) {
-      this.send({ error: err instanceof Error ? err.message : 'unknown error' })
-      this.send({ done: true })
-    }
+  private formatLink(desc: string): string {
+    return desc.replace(
+      /\[(\d+(?:,\d+)*)\]\(@ref\)/g,
+      (_, numbers: string) =>
+        numbers.split(",").map((number) => `[${number}]`).join(""),
+    );
   }
-
-  private send (params: {
-    content?: string
-    citations?: string[]
-    reasoning_content?: string
-    error?: string
-    done?: boolean
-  }) {
-    this.content += (params.reasoning_content || '') + (params.content || '')
-    const message: OpenAI.CompletionChunk = {
-      id: '',
-      model: this.config.model_name,
-      object: 'chat.completion.chunk',
-      choices: [{
-        index: 0,
-        delta: {
-            role: 'assistant',
-            content: params.content || '',
-            reasoning_content: params.reasoning_content || ''
-        },
-        finish_reason: null
-      }],
-      citations: params.citations || [],
-      created: Math.trunc(Date.now() / 1000)
-    }
-
-    if (params.error) {
-        message.error = {
-            message: params.error,
-            type: 'server error'
-        }
-
-        this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
-        return
-    }
-
-    if (params.done) {
-        if (this.config.tools?.length > 0 && this.sentBlockIndex === -1) {
-          message.choices[0].delta!.content = this.content
-        }
-        const prompt_tokens = approximateTokenSize(this.messages.reduce((acc, cur) => acc + (Array.isArray(cur.content) ? cur.content.map(_ => _.text).join('') : cur.content), ''))
-        const completion_tokens = approximateTokenSize(this.content)
-        message.usage = {
-            prompt_tokens,
-            completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens   
-        }
-        message.choices[0].finish_reason = 'stop'
-        this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
-        // Deno.writeFileSync(`./data/${this.config.chat_id}_res_2.json`, new TextEncoder().encode(JSON.stringify(message)))
-        this.streamController.enqueue(this.encoder.encode(`data: [DONE]\n\n`))
-        this.streamController.close()
-        this.callbacks.forEach(cb => cb())
-        return
-    }
-
-    this.streamController.enqueue(this.encoder.encode(`data: ${JSON.stringify(message)}\n\n`))
-  }
-
-  onDone(cb: () => void) {
-    this.callbacks.push(cb)
-  }
-
-  getStream() {
-    return this.stream
-  }
-
-  formatLink(desc: string) {
-    return desc.replace(/\[(\d+(?:,\d+)*)\]\(@ref\)/g, (_: string, numbers: string) => {
-      return numbers.split(',').map((n: string) => `[${n}]`).join('')
-    })
-  }
-}
-
-interface EventSourceMessage {
-  data: string
-  event?: string
-  id?: string
 }
 
 export enum CHUNK_TYPE {
-  ERROR = 'ERROR',
-  START = 'START', // 提供基础信息，如chatid
-  DEEPSEARCHING = 'DEEPSEARCHING',
-  SEARCHING = 'SEARCHING',
-  SEARCHING_DONE = 'SEARCHING_DONE',
-  THINKING = 'THINKING',
-  TEXT = 'TEXT',
-  SUGGESTION = 'SUGGESTION',
-  DONE = 'DONE',
-  NONE = 'NONE'
+  ERROR = "ERROR",
+  START = "START",
+  DEEPSEARCHING = "DEEPSEARCHING",
+  SEARCHING = "SEARCHING",
+  SEARCHING_DONE = "SEARCHING_DONE",
+  THINKING = "THINKING",
+  TEXT = "TEXT",
+  SUGGESTION = "SUGGESTION",
+  DONE = "DONE",
+  NONE = "NONE",
 }

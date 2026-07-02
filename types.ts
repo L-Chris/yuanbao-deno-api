@@ -1,165 +1,54 @@
-export declare namespace OpenAI {
-  interface Message {
-    role: 'user' | 'assistant' | 'system' | 'tool'
-    type?: 'text' | 'image' | 'file'
-    image?: string
-    content: string | MessageContent[]
-    tool_calls?: ToolCall[]
-    tool_call_id?: string
-  }
+import type { OpenAI } from "chat-base";
 
-  interface MessageContent {
-    type: 'text' | 'file' | 'image_url' | 'image'
-    file_url?: {
-      url: string
-    }
-    image_url?: {
-      url: string
-    }
-    text?: string
-  }
-
-  interface CompletionChunk {
-    id: string
-    model: string
-    object: string
-    citations: string[]
-    created: number
-    choices: {
-      index: number
-      message?: {
-        role: 'assistant' | 'user'
-        content: string
-        reasoning_content?: string
-        tool_calls?: ToolCall[]
-      }
-      delta?: {
-        role: 'assistant' | 'user'
-        content: string
-        reasoning_content?: string
-        tool_calls?: ToolCall[]
-      }
-      finish_reason: null | 'stop' | 'tool_calls'
-    }[]
-    usage?: {
-      prompt_tokens: number
-      completion_tokens: number
-      total_tokens: number
-    }
-    error?: {
-      message: string
-      type: string
-    }
-  }
-
-  interface Tool {
-    type: 'function'
-    function: {
-      name: string
-      description: string
-      parameters: {
-        type: 'object'
-        properties: Record<
-          string,
-          {
-            type: string
-            description: string
-          }
-        >
-        required: string[]
-        additionalProperties: boolean
-      }
-      strict: boolean
-    }
-  }
-
-  interface ToolCall {
-    id: string
-    type: 'function'
-    function: {
-      name: string
-      arguments: string
-    }
-  }
-
-  type ToolChoice = 'auto' | 'required'
-
-  interface ChatConfig {
-    chat_id: string
-    chat_type: 't2t' | 't2v' | 't2i' | 'search' | 'artifacts'
-    model_name: string
-    response_format: {
-      type: 'text' | 'json_schema'
-      json_schema?: Record<string, any>
-    }
-    features: {
-      thinking: boolean
-      searching: boolean
-      deepsearching: boolean
-    }
-    stream: boolean
-    tools: Tool[]
-    tool_choice: ToolChoice
-    is_tool_calling: boolean
-    is_tool_calling_done: boolean
-  }
-}
+export type { OpenAI };
 
 export declare namespace YuanBao {
   interface Cookies {
-    token: string
-    agentId: string
-    hy_user: string
+    token: string;
+    agentId: string;
+    hy_user: string;
   }
 
   interface Message {
-    role: OpenAI.Message['role']
-    content: string | MessageContent[]
+    role: OpenAI.Message["role"];
+    content: string | MessageContent[];
+    [key: string]: unknown;
   }
 
-  interface MessageContent {
-    type: 'text' | 'file' | 'image_url' | 'image'
-    file_url?: {
-      url: string
-    }
-    image_url?: {
-      url: string
-    }
-    text?: string
-  }
+  interface MessageContent extends OpenAI.MessageContent {}
 
   interface Attachment {
-    id: string
-    user_id: string
-    hash: string | null
-    filename: string
-    data: Record<string, any>
+    id: string;
+    user_id: string;
+    hash: string | null;
+    filename: string;
+    data: Record<string, any>;
     meta: {
-      name: string
-      content_type: string
-      size: number
-    }
-    created_at: number
-    updated_at: number
-    type: 'image' | 'file'
+      name: string;
+      content_type: string;
+      size: number;
+    };
+    created_at: number;
+    updated_at: number;
+    type: "image" | "file";
   }
 
   interface AttachmentResponse {
-    type: 'image' | 'file'
-    id: string
-    url: string
-    image: string
-    name: string
-    status: 'uploaded'
-    size: number
-    error: string
-    itemId: string
-    file_type: string
-    showType: 'image' | 'file'
+    type: "image" | "file";
+    id: string;
+    url: string;
+    image: string;
+    name: string;
+    status: "uploaded";
+    size: number;
+    error: string;
+    itemId: string;
+    file_type: string;
+    showType: "image" | "file";
   }
 
   type CompletionChunkStep = {
-    type: 'step'
+    type: "step";
     msg?: string;
     scene?: string;
     index?: number;
@@ -170,39 +59,39 @@ export declare namespace YuanBao {
       outline: string;
       templateId: string;
     };
-  }
+  };
 
   type CompletionChunkText = {
-    type: 'text'
-    msg: string
-    isTitle?: boolean
-  }
+    type: "text";
+    msg: string;
+    isTitle?: boolean;
+  };
 
   type CompletionChunkDeepSearch = {
-      type: 'deepSearch'
-      title: string
-      iconType: string
-      contents: {
-        type: 'text'
-        componentId: string
-        msg: string
-        toolCallName: string
-        state: number
-        docs: any
-      }[]
-    }
+    type: "deepSearch";
+    title: string;
+    iconType: string;
+    contents: {
+      type: "text";
+      componentId: string;
+      msg: string;
+      toolCallName: string;
+      state: number;
+      docs: any;
+    }[];
+  };
 
   type CompletionChunkThink = {
-    type: 'think'
-    title: string
-    iconType: string
-    content: string
-  }
+    type: "think";
+    title: string;
+    iconType: string;
+    content: string;
+  };
 
   type CompletionChunkSearch = {
-    type: 'searchGuid'
-    title: string
-    subTitle: string
+    type: "searchGuid";
+    title: string;
+    subTitle: string;
     footnote: string;
     prompt: string;
     botPrompt: string;
@@ -218,7 +107,7 @@ export declare namespace YuanBao {
     deepModeCid: string;
     aiImageTotal: number;
     realImageTotal: number;
-  }
+  };
 
   type CompletionChunkMeta = {
     type: "meta";
@@ -231,53 +120,74 @@ export declare namespace YuanBao {
     ic: number;
     unSupportRepeat: boolean;
     pluginID: string;
-  }
+  };
 
   type CompletionChunkComponent = {
-    type: 'components'
+    type: "components";
     list: {
-      type: 'step' | 'searchGuid' | 'outline' | 'text' | 'mindmap' | 'timeline' | 'relevantEvents' | 'relevantEntities' | 'card';
+      type:
+        | "step"
+        | "searchGuid"
+        | "outline"
+        | "text"
+        | "mindmap"
+        | "timeline"
+        | "relevantEvents"
+        | "relevantEntities"
+        | "card";
       steps?: { name: string }[];
       title?: {
         content?: string;
         form?: string;
       };
-    }[]
-  }
+    }[];
+  };
 
   type CompletionChunkOutline = {
-    type: 'outline'
-    outlineList: string[]
-  }
+    type: "outline";
+    outlineList: string[];
+  };
 
   type CompletionChunkMindmap = {
-    type: 'mindmap'
-    url: string
-    status: 'running' | 'success'
-    urlHigh: string
-  }
+    type: "mindmap";
+    url: string;
+    status: "running" | "success";
+    urlHigh: string;
+  };
 
   type CompletionChunkTimeline = {
-    type: 'timeline'
-    timelineList: any[]
-  }
+    type: "timeline";
+    timelineList: any[];
+  };
 
   type CompletionChunkRelevantEntities = {
-    type: 'relevantEntities'
+    type: "relevantEntities";
     entityList: {
       name: string;
       type: string;
       desc: string;
       reference: number[];
-    }[]
-  }
+    }[];
+  };
 
   type CompletionChunkDivider = {
-    type: 'dividerLine'
-    dividerText: string
-  }
+    type: "dividerLine";
+    dividerText: string;
+  };
 
-  type CompletionChunk = CompletionChunkDeepSearch | CompletionChunkSearch | CompletionChunkStep | CompletionChunkText | CompletionChunkThink | CompletionChunkMeta | CompletionChunkComponent | CompletionChunkOutline | CompletionChunkMindmap | CompletionChunkTimeline | CompletionChunkRelevantEntities | CompletionChunkDivider
+  type CompletionChunk =
+    | CompletionChunkDeepSearch
+    | CompletionChunkSearch
+    | CompletionChunkStep
+    | CompletionChunkText
+    | CompletionChunkThink
+    | CompletionChunkMeta
+    | CompletionChunkComponent
+    | CompletionChunkOutline
+    | CompletionChunkMindmap
+    | CompletionChunkTimeline
+    | CompletionChunkRelevantEntities
+    | CompletionChunkDivider;
 
   interface SearchResult {
     index: number;

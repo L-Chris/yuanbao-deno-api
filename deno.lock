@@ -1,19 +1,19 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@hono/hono@^4.8.0": "4.12.3",
-    "jsr:@rethinkos/chat-base@0.2.0": "0.2.0",
+    "jsr:@hono/hono@^4.8.0": "4.12.27",
+    "jsr:@rethinkos/chat-base@0.3.0": "0.3.0",
     "npm:eventsource-parser@3": "3.1.0",
     "npm:json2md@^2.0.2": "2.0.3",
     "npm:jsonrepair@^3.12.0": "3.14.0",
     "npm:tokenx@~0.4.1": "0.4.1"
   },
   "jsr": {
-    "@hono/hono@4.12.3": {
-      "integrity": "53c2d99912626a8bc293d6f69649af8148961b05d44485f2c0ed3053657d324c"
+    "@hono/hono@4.12.27": {
+      "integrity": "3acc640592008e43f7048e8e53275203e0da84fbcd50201121195da7560583dc"
     },
-    "@rethinkos/chat-base@0.2.0": {
-      "integrity": "6159529023845d7b5b51d57b193311250abc69a7e4280fd47a771025c0caccff",
+    "@rethinkos/chat-base@0.3.0": {
+      "integrity": "46022e95b122b865d9301a837cea18ab1a8e1896cbb748dbf6d70cc8e9dfce92",
       "dependencies": [
         "jsr:@hono/hono",
         "npm:eventsource-parser",
@@ -45,10 +45,8 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@rethinkos/chat-base@0.2.0",
-      "npm:eventsource-parser@3",
-      "npm:json2md@^2.0.2",
-      "npm:tokenx@~0.4.1"
+      "jsr:@rethinkos/chat-base@0.3.0",
+      "npm:json2md@^2.0.2"
     ]
   }
 }
