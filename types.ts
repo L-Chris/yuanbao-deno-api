@@ -2,6 +2,13 @@ import type { OpenAI } from "chat-base";
 
 export type { OpenAI };
 
+export interface YuanBaoApiResponse<T> {
+  code?: number | string;
+  message?: string;
+  msg?: string;
+  data?: T | null;
+}
+
 export declare namespace YuanBao {
   interface Cookies {
     token: string;

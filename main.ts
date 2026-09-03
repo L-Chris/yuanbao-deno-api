@@ -5,12 +5,14 @@ import {
   ChatApiServer,
   type ChatCompletionChunk,
   type ChatCompletionRequest,
-  type ChatMessage,
+  type ChatRunInput,
   type ListModelsResponse,
   mergeMessages,
   ModelFlagChatConfigStrategy,
   parseKeyValueBearer,
   type RequestContext,
+  runConversationCompletion,
+  runConversationStream,
 } from "chat-base";
 import {
   createCompletion,
@@ -61,61 +63,63 @@ class YuanBaoProvider extends BaseChatProvider<YuanBao.Cookies> {
   }
 
   async createChatCompletion(
-    input: {
-      body: ChatCompletionRequest;
-      messages: ChatMessage[];
-      config: BaseChatConfig;
-      context: RequestContext<YuanBao.Cookies>;
-    },
+    input: ChatRunInput<YuanBao.Cookies>,
   ): Promise<ChatCompletionChunk> {
     const config = toYuanBaoConfig(input.config);
     const messages = input.messages as OpenAI.Message[];
     const refs: YuanBao.Attachment[] = [];
     const newMessages = toYuanBaoMessages(config, messages, refs);
-    const conversation = await createConversation({
-      config,
-      cookies: input.context.auth,
-      messages: newMessages,
-      urls: refs,
-    });
 
-    config.chat_id = conversation.id;
-    try {
-      return await createCompletion({
-        config,
-        cookies: input.context.auth,
-        messages: newMessages,
-      }) as ChatCompletionChunk;
-    } finally {
-      await removeConversation(conversation.id, input.context.auth);
-    }
+    return await runConversationCompletion({
+      createConversation: () =>
+        createConversation({
+          config,
+          cookies: input.context.auth,
+          messages: newMessages,
+          urls: refs,
+        }),
+      cleanupConversation: async (conversation) => {
+        await removeConversation(conversation.id, input.context.auth);
+      },
+      createCompletion: async (conversation) => {
+        config.chat_id = conversation.id;
+        return await createCompletion({
+          config,
+          cookies: input.context.auth,
+          messages: newMessages,
+        }) as ChatCompletionChunk;
+      },
+    });
   }
 
   async createChatCompletionStream(
-    input: {
-      body: ChatCompletionRequest;
-      messages: ChatMessage[];
-      config: BaseChatConfig;
-      context: RequestContext<YuanBao.Cookies>;
-    },
+    input: ChatRunInput<YuanBao.Cookies>,
   ): Promise<ReadableStream<Uint8Array>> {
     const config = toYuanBaoConfig(input.config);
     const messages = input.messages as OpenAI.Message[];
     const refs: YuanBao.Attachment[] = [];
     const newMessages = toYuanBaoMessages(config, messages, refs);
-    const conversation = await createConversation({
-      config,
-      cookies: input.context.auth,
-      messages: newMessages,
-      urls: refs,
-    });
 
-    config.chat_id = conversation.id;
-    return await createCompletionStream({
-      config,
-      cookies: input.context.auth,
-      messages: newMessages,
-    }, () => removeConversation(conversation.id, input.context.auth));
+    return await runConversationStream({
+      createConversation: () =>
+        createConversation({
+          config,
+          cookies: input.context.auth,
+          messages: newMessages,
+          urls: refs,
+        }),
+      cleanupConversation: async (conversation) => {
+        await removeConversation(conversation.id, input.context.auth);
+      },
+      createStream: async (conversation) => {
+        config.chat_id = conversation.id;
+        return await createCompletionStream({
+          config,
+          cookies: input.context.auth,
+          messages: newMessages,
+        });
+      },
+    });
   }
 
   async listModels(

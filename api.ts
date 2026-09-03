@@ -1,5 +1,5 @@
 import { appendJsonSchemaPrompt, ProviderApiClient } from "chat-base";
-import { OpenAI, YuanBao } from "./types.ts";
+import { OpenAI, YuanBao, YuanBaoApiResponse } from "./types.ts";
 import { ChunkTransformer } from "./chunk-transformer.ts";
 
 const apiClient = new ProviderApiClient({ name: "yuanbao" });
@@ -19,7 +19,9 @@ export async function createConversation(params: {
   messages: YuanBao.Message[];
   urls: YuanBao.Attachment[];
 }) {
-  const json = await apiClient.json<{ id: string }>({
+  const json = await apiClient.json<
+    YuanBaoApiResponse<{ id?: string }> & { id?: string }
+  >({
     url: REQUEST_URL.CREATE_CONVERSATION,
     init: {
       method: "POST",
@@ -30,8 +32,15 @@ export async function createConversation(params: {
     },
   });
 
+  const id = json.id ?? json.data?.id;
+  if (!id) {
+    const code = json.code ?? "unknown";
+    const message = json.message ?? json.msg ?? "empty conversation id";
+    throw new Error(`createConversation failed: ${code} ${message}`);
+  }
+
   return {
-    id: json.id,
+    id,
   };
 }
 

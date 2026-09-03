@@ -1,14 +1,14 @@
 import {
   CHUNK_TYPE,
   type EventSourceMessage,
-  JsonEventSourceOpenAITransformer,
-  type OpenAIStreamWriter,
+  MappedJsonEventSourceOpenAITransformer,
+  type StreamAction,
 } from "chat-base";
 import json2md from "json2md";
 import { OpenAI, YuanBao } from "./types.ts";
 
 export class ChunkTransformer
-  extends JsonEventSourceOpenAITransformer<YuanBao.CompletionChunk> {
+  extends MappedJsonEventSourceOpenAITransformer<YuanBao.CompletionChunk> {
   constructor(
     req: Response,
     config: OpenAI.ChatConfig,
@@ -17,66 +17,62 @@ export class ChunkTransformer
     super(req, {
       model: config.model_name,
       messages,
+      mapChunk: (chunk) => this.mapChunk(chunk),
+      shouldSkipEvent: (event) => this.skipNonJsonEvent(event),
     });
   }
 
-  protected override shouldSkipEvent(event: EventSourceMessage): boolean {
+  private skipNonJsonEvent(event: EventSourceMessage): boolean {
     return /^[[a-z]/.test(event.data);
   }
 
-  protected handleChunk(
-    chunk: YuanBao.CompletionChunk,
-    _event: EventSourceMessage,
-    writer: OpenAIStreamWriter,
-  ): void {
+  private mapChunk(chunk: YuanBao.CompletionChunk): StreamAction {
     switch (this.getChunkType(chunk)) {
       case CHUNK_TYPE.TEXT: {
         const textChunk = chunk as YuanBao.CompletionChunkText;
-        if (textChunk.msg) writer.write({ content: textChunk.msg });
-        return;
+        return textChunk.msg
+          ? { type: "content", content: textChunk.msg }
+          : { type: "ignore" };
       }
       case CHUNK_TYPE.THINKING: {
         const thinkChunk = chunk as YuanBao.CompletionChunkThink;
-        if (thinkChunk.content) {
-          writer.write({ reasoningContent: thinkChunk.content });
-        }
-        return;
+        return thinkChunk.content
+          ? { type: "reasoning", content: thinkChunk.content }
+          : { type: "ignore" };
       }
       case CHUNK_TYPE.DEEPSEARCHING: {
         const deepChunk = chunk as YuanBao.CompletionChunkDeepSearch;
         const message = deepChunk.contents?.[0]?.msg;
-        if (message) writer.write({ reasoningContent: message });
-        return;
+        return message
+          ? { type: "reasoning", content: message }
+          : { type: "ignore" };
       }
       case CHUNK_TYPE.SEARCHING_DONE: {
         const searchChunk = chunk as YuanBao.CompletionChunkSearch;
-        writer.write({ citations: searchChunk.docs.map((doc) => doc.url) });
-        return;
+        return {
+          type: "citations",
+          citations: searchChunk.docs.map((doc) => doc.url),
+        };
       }
       default:
-        this.renderChunk(chunk, writer);
-        return;
+        return this.renderChunk(chunk);
     }
   }
 
-  private renderChunk(
-    chunk: YuanBao.CompletionChunk,
-    writer: OpenAIStreamWriter,
-  ): void {
+  private renderChunk(chunk: YuanBao.CompletionChunk): StreamAction {
     switch (chunk.type) {
       case "outline": {
         const chunkData = chunk as YuanBao.CompletionChunkOutline;
-        writer.write({
+        return {
+          type: "content",
           content: `# 研究大纲\n${
             chunkData.outlineList.map((item) => `- ${item}`).join("\n")
           }`,
-        });
-        return;
+        };
       }
       case "dividerLine": {
         const chunkData = chunk as YuanBao.CompletionChunkDivider;
-        writer.write({ content: `\n# ${chunkData.dividerText}\n` });
-        return;
+        return { type: "content", content: `\n# ${chunkData.dividerText}\n` };
       }
       case "relevantEntities": {
         const chunkData = chunk as YuanBao.CompletionChunkRelevantEntities;
@@ -89,13 +85,13 @@ export class ChunkTransformer
             })),
           },
         });
-        writer.write({ content: `\n# 相关组织及人物\n${tableMark}` });
-        return;
+        return { type: "content", content: `\n# 相关组织及人物\n${tableMark}` };
       }
       default:
         if (!["components", "mindmap", "meta", "step"].includes(chunk.type)) {
           console.log(chunk);
         }
+        return { type: "ignore" };
     }
   }
 
