@@ -27,7 +27,7 @@ class YuanBaoProvider extends BaseChatProvider<YuanBao.Cookies> {
   readonly name = "yuanbao";
 
   private readonly configStrategy = new ModelFlagChatConfigStrategy({
-    defaultModel: "gpt_175B_0404",
+    defaultModel: "hunyuan_gpt_175B_0404",
     separator: "_",
     modelNameFilter: (parts) =>
       parts.filter((part) => !["think", "search"].includes(part)).join("_"),
@@ -47,6 +47,7 @@ class YuanBaoProvider extends BaseChatProvider<YuanBao.Cookies> {
       token: auth.token,
       agentId: auth.agentId,
       hy_user: auth.hy_user,
+      requestHeaders: getYuanBaoRequestHeaders(headers),
     };
   }
 
@@ -128,6 +129,39 @@ class YuanBaoProvider extends BaseChatProvider<YuanBao.Cookies> {
     const models = await getModels(context.auth);
     return { data: models };
   }
+}
+
+const YUANBAO_HEADER_ALIASES: ReadonlyArray<readonly [string, string]> = [
+  ["x-yuanbao-uskey", "X-Uskey"],
+  ["x-uskey", "X-Uskey"],
+  ["x-yuanbao-bus-params-md5", "X-Bus-Params-Md5"],
+  ["x-bus-params-md5", "X-Bus-Params-Md5"],
+  ["x-yuanbao-timestamp", "X-Timestamp"],
+  ["x-timestamp", "X-Timestamp"],
+  ["x-yuanbao-device-id", "X-device-id"],
+  ["x-device-id", "X-device-id"],
+  ["x-yuanbao-hy92", "X-HY92"],
+  ["x-hy92", "X-HY92"],
+  ["x-yuanbao-hy93", "X-HY93"],
+  ["x-hy93", "X-HY93"],
+  ["x-yuanbao-exp-params", "X-Exp-Params"],
+  ["x-exp-params", "X-Exp-Params"],
+  ["x-yuanbao-trid-channel", "X-Trid-Channel"],
+  ["x-trid-channel", "X-Trid-Channel"],
+  ["x-yuanbao-web-ch-id", "x-web-ch-id"],
+  ["x-web-ch-id", "x-web-ch-id"],
+];
+
+function getYuanBaoRequestHeaders(headers: Headers): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  for (const [source, target] of YUANBAO_HEADER_ALIASES) {
+    if (result[target]) continue;
+    const value = headers.get(source);
+    if (value) result[target] = value;
+  }
+
+  return result;
 }
 
 function toYuanBaoConfig(config: BaseChatConfig): OpenAI.ChatConfig {

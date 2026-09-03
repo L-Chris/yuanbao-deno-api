@@ -14,6 +14,12 @@ export declare namespace YuanBao {
     token: string;
     agentId: string;
     hy_user: string;
+    /**
+     * Dynamic browser headers used by Yuanbao's QIMEI/request-signing layer.
+     * They cannot be reconstructed from hy_token alone, so callers may pass
+     * them through the OpenAI-compatible endpoint.
+     */
+    requestHeaders: Record<string, string>;
   }
 
   interface Message {

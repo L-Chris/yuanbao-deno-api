@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@hono/hono@^4.8.0": "4.12.27",
     "jsr:@rethinkos/chat-base@0.7.2": "0.7.2",
+    "npm:blueimp-md5@^2.19.0": "2.19.0",
     "npm:eventsource-parser@3": "3.1.0",
     "npm:json2md@^2.0.2": "2.0.3",
     "npm:jsonrepair@^3.12.0": "3.14.1",
@@ -23,29 +24,39 @@
     }
   },
   "npm": {
+    "blueimp-md5@2.19.0": {
+      "integrity": "sha512-DRQrD6gJyy8FbiE4s+bDoXS9hiW3Vbx5uCdwvcCf3zLHL+Iv7LtGHLpr+GZV8rHG8tK766FGYBwRbu8pELTt+w==",
+      "tarball": "https://registry.npmmirror.com/blueimp-md5/-/blueimp-md5-2.19.0.tgz"
+    },
     "eventsource-parser@3.1.0": {
-      "integrity": "sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg=="
+      "integrity": "sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==",
+      "tarball": "https://registry.npmmirror.com/eventsource-parser/-/eventsource-parser-3.1.0.tgz"
     },
     "indento@1.1.14": {
-      "integrity": "sha512-K4cK97v4M/ucCAbe3LUpg994folYL0WnEiCFxHXAIowKLbBb/Ahiazkz3Ao5gRar4i9pDr3imcpq4suOu0FbNw=="
+      "integrity": "sha512-K4cK97v4M/ucCAbe3LUpg994folYL0WnEiCFxHXAIowKLbBb/Ahiazkz3Ao5gRar4i9pDr3imcpq4suOu0FbNw==",
+      "tarball": "https://registry.npmmirror.com/indento/-/indento-1.1.14.tgz"
     },
     "json2md@2.0.3": {
       "integrity": "sha512-ZPzh6Djvqz8grJMxKllfCHo0p+p7BsbZ1J95KcCJgvvfdoy7myuKrrkUp80Kpy+wGauykC0dYljLqLY0kENaOw==",
       "dependencies": [
         "indento"
-      ]
+      ],
+      "tarball": "https://registry.npmmirror.com/json2md/-/json2md-2.0.3.tgz"
     },
     "jsonrepair@3.14.1": {
       "integrity": "sha512-NpGgMhmzG/fajkBEFlS9jZvMSGDvc2xN/9wNCHZ+Nx32GZfLRELU6UE6dQkebvrQUct9S+7bvnpX29NB36Qbdw==",
-      "bin": true
+      "bin": true,
+      "tarball": "https://registry.npmmirror.com/jsonrepair/-/jsonrepair-3.14.1.tgz"
     },
     "tokenx@0.4.1": {
-      "integrity": "sha512-LCMniis0WsHel07xh3K9OIt5c9Xla1awtOoWBmUHZBQR7pvTvgGFuYpLiCZWohXPC1YuZORnN0+fCVYI/ie8Jg=="
+      "integrity": "sha512-LCMniis0WsHel07xh3K9OIt5c9Xla1awtOoWBmUHZBQR7pvTvgGFuYpLiCZWohXPC1YuZORnN0+fCVYI/ie8Jg==",
+      "tarball": "https://registry.npmmirror.com/tokenx/-/tokenx-0.4.1.tgz"
     }
   },
   "workspace": {
     "dependencies": [
       "jsr:@rethinkos/chat-base@0.7.2",
+      "npm:blueimp-md5@^2.19.0",
       "npm:json2md@^2.0.2"
     ]
   }

@@ -1,9 +1,11 @@
 {
   "imports": {
     "json2md": "npm:json2md@^2.0.2",
+    "md5": "npm:blueimp-md5@^2.19.0",
     "chat-base": "jsr:@rethinkos/chat-base@0.7.2"
   },
   "tasks": {
-    "start": "deno run --allow-net --allow-read --allow-sys --allow-write --allow-env main.ts"
+    "start": "deno run --allow-net --allow-read --allow-sys --allow-write --allow-env main.ts",
+    "test": "deno test --allow-env api_test.ts"
   }
 }

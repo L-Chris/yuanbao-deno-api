@@ -1,8 +1,16 @@
 import { appendJsonSchemaPrompt, ProviderApiClient } from "chat-base";
+import md5 from "md5";
 import { OpenAI, YuanBao, YuanBaoApiResponse } from "./types.ts";
 import { ChunkTransformer } from "./chunk-transformer.ts";
 
 const apiClient = new ProviderApiClient({ name: "yuanbao" });
+
+const WEB_VERSION = Deno.env.get("YUANBAO_WEB_VERSION") ?? "2.83.11";
+const COMMIT_TAG = Deno.env.get("YUANBAO_COMMIT_TAG") ?? "0d2b8477";
+const TIMEZONE_OFFSET_MINUTES = parseInt(
+  Deno.env.get("YUANBAO_TIMEZONE_OFFSET_MINUTES") ?? "480",
+  10,
+);
 
 const REQUEST_URL = {
   CREATE_CONVERSATION:
@@ -116,6 +124,9 @@ function buildCompletionRequest(params: {
       headers: {
         ...generateHeaders(params.cookies),
         Accept: "text/event-stream",
+        "X-Input-Type": "text",
+        "X-Event-Input-Type": "11",
+        "X-Traceparent": crypto.randomUUID().replaceAll("-", ""),
       },
       body: JSON.stringify(buildCompletionBody({
         prompt,
@@ -126,17 +137,31 @@ function buildCompletionRequest(params: {
   };
 }
 
-function buildCompletionBody(params: {
+export function buildCompletionBody(params: {
   prompt: string;
   config: OpenAI.ChatConfig;
   cookies: YuanBao.Cookies;
 }) {
   const { prompt, config, cookies } = params;
+  const internetSearch = config.features.searching
+    ? "openInternetSearch"
+    : "autoInternetSearch";
+  const isHunyuanAgentMode = config.model_name === "hunyuan_t1";
+  const chatModelExtInfo = {
+    modelId: isHunyuanAgentMode ? "hunyuan_gpt_175B_0404" : config.model_name,
+    ...(isHunyuanAgentMode
+      ? { agentModeModelSetting: { modelId: config.model_name } }
+      : { subModelId: "" }),
+    supportFunctions: {
+      internetSearch: config.features.searching ? "openInternetSearch" : "",
+    },
+    internetSearch,
+  };
 
   return {
     model: "gpt_175B_0404",
     prompt,
-    plugin: "Adaptive",
+    plugin: "",
     displayPrompt: prompt,
     displayPromptType: 1,
     options: {
@@ -148,14 +173,20 @@ function buildCompletionBody(params: {
     },
     multimedia: [],
     agentId: cookies.agentId,
+    projectId: "",
+    isTemporary: false,
+    docOpenid: "",
+    applicationIdList: [],
+    chatModelExtInfo: JSON.stringify(chatModelExtInfo),
     supportHint: 1,
     version: "v2",
     chatModelId: config.model_name,
-    supportFunctions: [
-      config.features.searching
-        ? "supportInternetSearch"
-        : "closeInternetSearch",
-    ],
+    supportFunctions: ["openAutoSearchSwitch", internetSearch],
+    extReportParams: null,
+    isAtomInput: false,
+    conversationId: config.chat_id,
+    offsetOfHour: Math.trunc(TIMEZONE_OFFSET_MINUTES / 60),
+    offsetOfMinute: TIMEZONE_OFFSET_MINUTES % 60,
     ...(config.features.deepsearching
       ? {
         isAiDeepSearch: true,
@@ -183,46 +214,65 @@ function messagesToPrompt(messages: YuanBao.Message[]): string {
 export function getModels(_cookies: YuanBao.Cookies) {
   return [
     {
-      id: "deep_seek",
-      name: "deepseek",
+      id: "hunyuan_omnipotent_hy4",
+      name: "hunyuan_hy4_preview",
     },
     {
-      id: "deep_seek_search",
-      name: "deepseek_search",
-    },
-    {
-      id: "deep_seek_think_search",
-      name: "deepseek_think_search",
-    },
-    {
-      id: "gpt_175B_0404_deepsearch",
-      name: "hunyuan_deepsearch",
-    },
-    {
-      id: "gpt_175B_0404",
+      id: "hunyuan_gpt_175B_0404",
       name: "hunyuan",
     },
     {
-      id: "hunyuan_t1_think",
+      id: "hunyuan_gpt_175B_0404_search",
+      name: "hunyuan_search",
+    },
+    {
+      id: "hunyuan_gpt_175B_0404_deepsearch",
+      name: "hunyuan_deepsearch",
+    },
+    {
+      id: "hunyuan_t1",
       name: "hunyuan_think",
     },
     {
-      id: "hunyuan_t1_think_search",
+      id: "hunyuan_t1_search",
       name: "hunyuan_think_search",
     },
     {
-      id: "gpt_175B_0404_search",
-      name: "hunyuan_search",
+      id: "deep_seek_v3",
+      name: "deepseek",
+    },
+    {
+      id: "deep_seek_v3_search",
+      name: "deepseek_search",
+    },
+    {
+      id: "deep_seek",
+      name: "deepseek_think",
+    },
+    {
+      id: "deep_seek_search",
+      name: "deepseek_think_search",
     },
   ];
 }
 
-export function generateHeaders(cookies: YuanBao.Cookies) {
+export function generateHeaders(
+  cookies: YuanBao.Cookies,
+): Record<string, string> {
   const Cookie = [
     `hy_source=web`,
     `hy_user=${cookies.hy_user}`,
     `hy_token=${cookies.token}`,
   ].join("; ");
+
+  const requestHeaders = { ...cookies.requestHeaders };
+  const timestamp = requestHeaders["X-Timestamp"] ?? String(Date.now());
+  const h38 = requestHeaders["X-HY92"] ?? "";
+  const busParams = `h38=${h38}&timestamp=${timestamp}&platform=web`;
+
+  requestHeaders["X-Timestamp"] = timestamp;
+  requestHeaders["X-Bus-Params-Md5"] ??= md5(busParams);
+  requestHeaders["X-Uskey"] ??= "";
 
   return {
     Cookie,
@@ -234,7 +284,8 @@ export function generateHeaders(cookies: YuanBao.Cookies) {
     "x-source": "web",
     "x-platform": "win",
     "x-language": "zh-CN",
-    "x-webversion": "2.68.1",
+    "x-webversion": WEB_VERSION,
+    "x-commit-tag": COMMIT_TAG,
     "x-instance-id": "5",
     "x-ybuitest": "0",
     "x-webdriver": "0",
@@ -257,5 +308,6 @@ export function generateHeaders(cookies: YuanBao.Cookies) {
     Referer: "https://yuanbao.tencent.com",
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
+    ...requestHeaders,
   };
 }
