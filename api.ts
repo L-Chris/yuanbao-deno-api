@@ -2,6 +2,7 @@ import { appendJsonSchemaPrompt, ProviderApiClient } from "chat-base";
 import md5 from "md5";
 import { OpenAI, YuanBao, YuanBaoApiResponse } from "./types.ts";
 import { ChunkTransformer } from "./chunk-transformer.ts";
+import { UskeySigner } from "./signer.ts";
 
 const apiClient = new ProviderApiClient({ name: "yuanbao" });
 
@@ -11,6 +12,7 @@ const TIMEZONE_OFFSET_MINUTES = parseInt(
   Deno.env.get("YUANBAO_TIMEZONE_OFFSET_MINUTES") ?? "480",
   10,
 );
+const BROWSERLESS_URL = Deno.env.get("YUANBAO_BROWSERLESS_WS") ?? "";
 
 const REQUEST_URL = {
   CREATE_CONVERSATION:
@@ -20,6 +22,52 @@ const REQUEST_URL = {
   CREATE_COMPLETION: (chatId: string) =>
     `https://yuanbao.tencent.com/api/chat/${chatId}`,
 };
+
+const SIGNING_PATHS = ["/user/agent/conversation/create", "/chat/"];
+
+const signerCache = new Map<string, UskeySigner>();
+
+function needsSigning(path: string): boolean {
+  return SIGNING_PATHS.some((item) => path.includes(item));
+}
+
+async function getSecurityHeaders(
+  cookies: YuanBao.Cookies,
+  path: string,
+): Promise<Record<string, string>> {
+  if (!BROWSERLESS_URL || !needsSigning(path)) return {};
+
+  let signer = signerCache.get(cookies.token);
+  if (!signer) {
+    if (signerCache.size >= 4) {
+      const oldest = signerCache.entries().next().value;
+      if (oldest) {
+        signerCache.delete(oldest[0]);
+        oldest[1].dispose();
+      }
+    }
+    signer = new UskeySigner(BROWSERLESS_URL, cookies.agentId, [
+      { name: "hy_source", value: "web" },
+      { name: "hy_user", value: cookies.hy_user },
+      { name: "hy_token", value: cookies.token },
+    ]);
+    signerCache.set(cookies.token, signer);
+    console.log("[yuanbao] creating uskey signer session (first request is slow)");
+  }
+
+  try {
+    const headers = await signer.sign();
+    return headers ?? {};
+  } catch (error) {
+    console.error(
+      "[yuanbao] uskey signing failed:",
+      error instanceof Error ? error.message : error,
+    );
+    signerCache.delete(cookies.token);
+    signer.dispose();
+    return {};
+  }
+}
 
 export async function createConversation(params: {
   config: OpenAI.ChatConfig;
@@ -36,7 +84,13 @@ export async function createConversation(params: {
       body: JSON.stringify({
         agentId: params.cookies.agentId,
       }),
-      headers: generateHeaders(params.cookies),
+      headers: await generateHeaders(
+        params.cookies,
+        await getSecurityHeaders(
+          params.cookies,
+          "/api/user/agent/conversation/create",
+        ),
+      ),
     },
   });
 
@@ -110,19 +164,23 @@ export async function createCompletion(params: {
   });
 }
 
-function buildCompletionRequest(params: {
+async function buildCompletionRequest(params: {
   messages: YuanBao.Message[];
   config: OpenAI.ChatConfig;
   cookies: YuanBao.Cookies;
 }) {
   const prompt = messagesToPrompt(params.messages);
+  const security = await getSecurityHeaders(
+    params.cookies,
+    `/api/chat/${params.config.chat_id}`,
+  );
 
   return {
     url: REQUEST_URL.CREATE_COMPLETION(params.config.chat_id),
     init: {
       method: "POST",
       headers: {
-        ...generateHeaders(params.cookies),
+        ...generateHeaders(params.cookies, security),
         Accept: "text/event-stream",
         "X-Input-Type": "text",
         "X-Event-Input-Type": "11",
@@ -258,6 +316,7 @@ export function getModels(_cookies: YuanBao.Cookies) {
 
 export function generateHeaders(
   cookies: YuanBao.Cookies,
+  security: Record<string, string> = {},
 ): Record<string, string> {
   const Cookie = [
     `hy_source=web`,
@@ -266,13 +325,18 @@ export function generateHeaders(
   ].join("; ");
 
   const requestHeaders = { ...cookies.requestHeaders };
-  const timestamp = requestHeaders["X-Timestamp"] ?? String(Date.now());
-  const h38 = requestHeaders["X-HY92"] ?? "";
+  const timestamp = security["X-Timestamp"] ??
+    requestHeaders["X-Timestamp"] ?? String(Date.now());
+  const h38 = security["X-HY92"] ?? requestHeaders["X-HY92"] ?? "";
   const busParams = `h38=${h38}&timestamp=${timestamp}&platform=web`;
 
   requestHeaders["X-Timestamp"] = timestamp;
-  requestHeaders["X-Bus-Params-Md5"] ??= md5(busParams);
-  requestHeaders["X-Uskey"] ??= "";
+  requestHeaders["X-Bus-Params-Md5"] ??= security["X-Bus-Params-Md5"] ??
+    md5(busParams);
+  requestHeaders["X-Uskey"] ??= security["X-Uskey"] ?? "";
+  if (security["X-device-id"]) requestHeaders["X-device-id"] = security["X-device-id"];
+  if (security["X-HY93"]) requestHeaders["X-HY93"] = security["X-HY93"];
+  if (security["X-HY92"]) requestHeaders["X-HY92"] = security["X-HY92"];
 
   return {
     Cookie,

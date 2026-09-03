@@ -31,7 +31,7 @@ export class ChunkTransformer
       case CHUNK_TYPE.TEXT: {
         const textChunk = chunk as YuanBao.CompletionChunkText;
         return textChunk.msg
-          ? { type: "content", content: textChunk.msg }
+          ? { type: "content", content: this.cleanMarkers(textChunk.msg) }
           : { type: "ignore" };
       }
       case CHUNK_TYPE.THINKING: {
@@ -110,5 +110,11 @@ export class ChunkTransformer
       (_, numbers: string) =>
         numbers.split(",").map((number) => `[${number}]`).join(""),
     );
+  }
+
+  private cleanMarkers(text: string): string {
+    return this.formatLink(text)
+      .replace(/\[[^\[\]]*\]\(@mark_[^)]*\)/g, "")
+      .replace(/\[citation:\d+\]/g, "");
   }
 }
