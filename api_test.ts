@@ -68,6 +68,7 @@ Deno.test("models and completion body match the current website", () => {
     stream: true,
     tools: [],
     tool_choice: "auto",
+    parallel_tool_calls: true,
     is_tool_calling: false,
     is_tool_calling_done: false,
   };

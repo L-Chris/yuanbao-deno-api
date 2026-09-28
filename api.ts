@@ -1,4 +1,9 @@
-import { appendJsonSchemaPrompt, ProviderApiClient } from "chat-base";
+import {
+  appendJsonSchemaPrompt,
+  type ChatCompletionChunk,
+  normalizeJsonSchema,
+  ProviderApiClient,
+} from "chat-base";
 import md5 from "md5";
 import { OpenAI, YuanBao, YuanBaoApiResponse } from "./types.ts";
 import { ChunkTransformer } from "./chunk-transformer.ts";
@@ -153,7 +158,7 @@ export async function createCompletion(params: {
     params.config.response_format,
   ) as YuanBao.Message[];
 
-  return await apiClient.createCompletion({
+  const response = await apiClient.createCompletion({
     request: buildCompletionRequest({ ...params, messages }),
     model: params.config.model_name,
     messages,
@@ -162,6 +167,85 @@ export async function createCompletion(params: {
     createTransformer: (response) =>
       new ChunkTransformer(response, params.config, messages),
   });
+
+  return await ensureJsonResponse({ ...params, messages }, response);
+}
+
+function isJsonFormatRequested(config: OpenAI.ChatConfig): boolean {
+  const type = config.response_format?.type;
+  return type === "json_schema" || type === "json_object";
+}
+
+function contentIsValidJson(content: unknown): content is string {
+  if (typeof content !== "string" || !content.trim()) return false;
+  try {
+    JSON.parse(content);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function buildStructuringPrompt(config: OpenAI.ChatConfig): string {
+  const schema = normalizeJsonSchema(config.response_format);
+  if (schema) {
+    return `你的上一条回答需要整理为 JSON。请严格按照以下 JSON Schema 整理上一条回答的内容，只输出符合该 Schema 的 JSON 数据本身，不要输出任何 Markdown、代码块标记或额外说明文字，也不要包含 Schema 定义本身：\n${
+      JSON.stringify(schema, null, 2)
+    }`;
+  }
+  return "请把上一条回答的内容整理为一个有效的 JSON 对象。只输出 JSON 本身，不要输出任何 Markdown、代码块标记或额外说明文字。";
+}
+
+async function ensureJsonResponse(
+  params: {
+    messages: YuanBao.Message[];
+    config: OpenAI.ChatConfig;
+    cookies: YuanBao.Cookies;
+  },
+  response: ChatCompletionChunk,
+): Promise<ChatCompletionChunk> {
+  const choice = response.choices?.[0];
+  if (
+    !isJsonFormatRequested(params.config) ||
+    params.config.tools?.length ||
+    contentIsValidJson(choice?.message?.content)
+  ) {
+    return response;
+  }
+
+  console.log(
+    "[yuanbao] response is not valid JSON, sending structuring follow-up",
+  );
+
+  const followUpConfig = {
+    ...params.config,
+    features: {
+      ...params.config.features,
+      searching: false,
+      deepsearching: false,
+    },
+  };
+  const followUp = await apiClient.createCompletion({
+    request: await buildCompletionRequestWithPrompt(
+      { ...params, config: followUpConfig },
+      buildStructuringPrompt(params.config),
+    ),
+    model: params.config.model_name,
+    messages: params.messages,
+    responseFormat: params.config.response_format,
+    createTransformer: (response) =>
+      new ChunkTransformer(response, followUpConfig, params.messages),
+  });
+
+  const followUpContent = followUp.choices?.[0]?.message?.content;
+  const message = response.choices?.[0]?.message;
+  if (contentIsValidJson(followUpContent) && message) {
+    message.content = followUpContent;
+    return response;
+  }
+
+  console.warn("[yuanbao] structuring follow-up did not return valid JSON");
+  return response;
 }
 
 async function buildCompletionRequest(params: {
@@ -169,7 +253,20 @@ async function buildCompletionRequest(params: {
   config: OpenAI.ChatConfig;
   cookies: YuanBao.Cookies;
 }) {
-  const prompt = messagesToPrompt(params.messages);
+  return await buildCompletionRequestWithPrompt(
+    params,
+    messagesToPrompt(params.messages),
+  );
+}
+
+async function buildCompletionRequestWithPrompt(
+  params: {
+    messages: YuanBao.Message[];
+    config: OpenAI.ChatConfig;
+    cookies: YuanBao.Cookies;
+  },
+  prompt: string,
+) {
   const security = await getSecurityHeaders(
     params.cookies,
     `/api/chat/${params.config.chat_id}`,

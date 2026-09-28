@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+!.env.example
+.codegraph
+.vscode
+node_modules
+logs/
+data/
+*.log
+.DS_Store

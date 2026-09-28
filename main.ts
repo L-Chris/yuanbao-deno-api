@@ -179,6 +179,7 @@ function toYuanBaoConfig(config: BaseChatConfig): OpenAI.ChatConfig {
     stream: config.stream,
     tools: config.tools as OpenAI.Tool[],
     tool_choice: config.toolChoice as OpenAI.ToolChoice,
+    parallel_tool_calls: config.parallelToolCalls,
     is_tool_calling: config.isToolCalling,
     is_tool_calling_done: config.isToolCallingDone,
   };

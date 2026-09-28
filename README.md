@@ -113,6 +113,7 @@ curl https://your-deno-deploy-url.deno.dev/v1/chat/completions \
 | HTTP 401 `code: 20002 登录态已过期` | `hy_token` 过期 | 重新登录官网取 Cookie |
 | 401 但浏览器里能正常用 | 部署机出口 IP 与登录 IP 不一致触发风控 | 同机登录或更换出口 |
 | 响应正常但内容混杂 `[](@mark_*)`、`[n,m](@ref)` | 元宝私有富文本标记 | `chunk-transformer.ts` 已清洗，出现新标记时补充正则 |
+| 调用方报"格式错误/JSON 解析失败"（`generateObject` 场景） | 混元系模型 + `response_format: json_schema` 时无视 JSON 指令，返回 Markdown | 服务已内置兜底：非流式且响应不是合法 JSON 时，在同一会话追问一轮要求按 Schema 整理（会多一次模型调用，约 +10-30s）；DeepSeek 系一般首轮即合规 |
 
 ### 2. 前端包定位
 

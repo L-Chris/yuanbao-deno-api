@@ -1,20 +1,20 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@hono/hono@^4.8.0": "4.12.27",
-    "jsr:@rethinkos/chat-base@0.7.2": "0.7.2",
+    "jsr:@hono/hono@^4.8.0": "4.13.9",
+    "jsr:@rethinkos/chat-base@0.7.5": "0.7.5",
     "npm:blueimp-md5@^2.19.0": "2.19.0",
-    "npm:eventsource-parser@3": "3.1.0",
+    "npm:eventsource-parser@3": "3.0.6",
     "npm:json2md@^2.0.2": "2.0.3",
-    "npm:jsonrepair@^3.12.0": "3.14.1",
+    "npm:jsonrepair@^3.12.0": "3.15.0",
     "npm:tokenx@~0.4.1": "0.4.1"
   },
   "jsr": {
-    "@hono/hono@4.12.27": {
-      "integrity": "3acc640592008e43f7048e8e53275203e0da84fbcd50201121195da7560583dc"
+    "@hono/hono@4.13.9": {
+      "integrity": "74c83a71556490dc3752c3b308b6c85befd9dcdd37ed903a873142a29e5a67f4"
     },
-    "@rethinkos/chat-base@0.7.2": {
-      "integrity": "f668ec64d115ae19169f926eedea0cf78a57941e5534c342902e74ec1315e1c3",
+    "@rethinkos/chat-base@0.7.5": {
+      "integrity": "3b6ec62906df993e5620606c8a54354f64cafd1e61a72cd738d7d437c0357fcc",
       "dependencies": [
         "jsr:@hono/hono",
         "npm:eventsource-parser",
@@ -28,9 +28,9 @@
       "integrity": "sha512-DRQrD6gJyy8FbiE4s+bDoXS9hiW3Vbx5uCdwvcCf3zLHL+Iv7LtGHLpr+GZV8rHG8tK766FGYBwRbu8pELTt+w==",
       "tarball": "https://registry.npmmirror.com/blueimp-md5/-/blueimp-md5-2.19.0.tgz"
     },
-    "eventsource-parser@3.1.0": {
-      "integrity": "sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==",
-      "tarball": "https://registry.npmmirror.com/eventsource-parser/-/eventsource-parser-3.1.0.tgz"
+    "eventsource-parser@3.0.6": {
+      "integrity": "sha512-Vo1ab+QXPzZ4tCa8SwIHJFaSzy4R6SHf7BY79rFBDf0idraZWAkYrDjDj8uWaSm3S2TK+hJ7/t1CEmZ7jXw+pg==",
+      "tarball": "https://registry.npmmirror.com/eventsource-parser/-/eventsource-parser-3.0.6.tgz"
     },
     "indento@1.1.14": {
       "integrity": "sha512-K4cK97v4M/ucCAbe3LUpg994folYL0WnEiCFxHXAIowKLbBb/Ahiazkz3Ao5gRar4i9pDr3imcpq4suOu0FbNw==",
@@ -43,10 +43,10 @@
       ],
       "tarball": "https://registry.npmmirror.com/json2md/-/json2md-2.0.3.tgz"
     },
-    "jsonrepair@3.14.1": {
-      "integrity": "sha512-NpGgMhmzG/fajkBEFlS9jZvMSGDvc2xN/9wNCHZ+Nx32GZfLRELU6UE6dQkebvrQUct9S+7bvnpX29NB36Qbdw==",
+    "jsonrepair@3.15.0": {
+      "integrity": "sha512-wy8OTjwsJwQRnQJkKnMJJ9vcytRdBPAgIF/Hy6+s1dAj42BHMKiyL8JzEieIl3JY7idt8eyHwBWTO8mh/+mtwA==",
       "bin": true,
-      "tarball": "https://registry.npmmirror.com/jsonrepair/-/jsonrepair-3.14.1.tgz"
+      "tarball": "https://registry.npmmirror.com/jsonrepair/-/jsonrepair-3.15.0.tgz"
     },
     "tokenx@0.4.1": {
       "integrity": "sha512-LCMniis0WsHel07xh3K9OIt5c9Xla1awtOoWBmUHZBQR7pvTvgGFuYpLiCZWohXPC1YuZORnN0+fCVYI/ie8Jg==",
@@ -55,7 +55,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@rethinkos/chat-base@0.7.2",
+      "jsr:@rethinkos/chat-base@0.7.5",
       "npm:blueimp-md5@^2.19.0",
       "npm:json2md@^2.0.2"
     ]
